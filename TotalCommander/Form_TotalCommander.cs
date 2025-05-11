@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using TotalCommander.GUI;
 
 namespace TotalCommander
 {
@@ -10,6 +12,7 @@ namespace TotalCommander
     {
         #region Fields
         private GUI.ShellBrowser m_PreviousFocus;
+        private Font currentAppliedFont;
         #endregion
 
         public Form_TotalCommander()
@@ -20,6 +23,8 @@ namespace TotalCommander
 
             shellBrowserLeft.Init();
             shellBrowserRight.Init();
+
+            currentAppliedFont = shellBrowserLeft.Font;
 
             shellBrowserLeft.RecvFocus += Browser_GotFocus;
             shellBrowserRight.RecvFocus += Browser_GotFocus;
@@ -77,10 +82,32 @@ namespace TotalCommander
                     btnF7NewFolder_Click(null, null);
                     break;
                 case Keys.F8:
-                    btnF8Delete_Click(null, null);
+                    DeleteItems(Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    e.Handled = true;
+                    break;
+                case Keys.Delete:
+                    DeleteItems(Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                    e.Handled = true;
+                    break;
+                case Keys.Shift | Keys.Delete:
+                    DeleteItems(Microsoft.VisualBasic.FileIO.RecycleOption.DeletePermanently);
+                    e.Handled = true;
                     break;
                 case Keys.Control | Keys.Q:
                     btnExit_Click(null, null);
+                    break;
+                case Keys.Tab:
+                    if (m_PreviousFocus == shellBrowserLeft)
+                    {
+                        shellBrowserRight.Focus();
+                        m_PreviousFocus = shellBrowserRight;
+                    }
+                    else if (m_PreviousFocus == shellBrowserRight)
+                    {
+                        shellBrowserLeft.Focus();
+                        m_PreviousFocus = shellBrowserLeft;
+                    }
+                    e.Handled = true;
                     break;
             }
         }
@@ -92,7 +119,15 @@ namespace TotalCommander
 
         void btnF8Delete_Click(object sender, EventArgs e)
         {
-            m_PreviousFocus.DeleteSelectedItems(Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+            DeleteItems(Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+        }
+
+        private void DeleteItems(Microsoft.VisualBasic.FileIO.RecycleOption recycleOption)
+        {
+            if (m_PreviousFocus != null)
+            {
+                m_PreviousFocus.DeleteSelectedItems(recycleOption);
+            }
         }
 
         void btnF7NewFolder_Click(object sender, EventArgs e)
@@ -128,6 +163,7 @@ namespace TotalCommander
             tsmiExit.Click += tsmiExit_Click;
             tsmiKeyboards.Click += tsmiKeyboards_Click;
             tsmiAbout.Click += tsmiAbout_Click;
+            tsmiFontSettings.Click += TsmiFontSettings_Click;
         }
 
         void tsmiAbout_Click(object sender, EventArgs e)
@@ -162,6 +198,23 @@ lzutao @ Github";
         void tsmiViewProperties_Click(object sender, EventArgs e)
         {
             m_PreviousFocus.OpenPropertiesWindowWithSelectedItems();
+        }
+
+        private void TsmiFontSettings_Click(object sender, EventArgs e)
+        {
+            using (FormFontSettings fontDialog = new FormFontSettings(currentAppliedFont))
+            {
+                if (fontDialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    Font selectedFont = fontDialog.SelectedFont;
+                    if (selectedFont != null)
+                    {
+                        shellBrowserLeft.ApplyFont(selectedFont);
+                        shellBrowserRight.ApplyFont(selectedFont);
+                        currentAppliedFont = selectedFont;
+                    }
+                }
+            }
         }
         #endregion Menu items
 

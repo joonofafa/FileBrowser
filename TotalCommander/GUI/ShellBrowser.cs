@@ -279,9 +279,10 @@ namespace TotalCommander.GUI
                 case 4:
                     comparer = new Comparison<FileSystemInfo>(CompareFileAttributes);
                     break;
-                default:
-                    goto case 0;
             }
+            // comparer가 null일 가능성에 대한 방어 코드 추가 (모든 case가 처리되므로 실제로는 거의 발생 안함)
+            if (comparer == null) comparer = new Comparison<FileSystemInfo>(CompareFileName);
+
             m_ShellItemInfo.Sort((a, b) =>
             {
                 int ret = comparer(a, b);
@@ -706,76 +707,78 @@ namespace TotalCommander.GUI
         }
 
         delegate void DeleteFileDel(string file, UIOption showUI, RecycleOption recycle, UICancelOption onUserCancel);
-        public void DeleteSelectedItems(RecycleOption recycle)
+        public async void DeleteSelectedItems(RecycleOption recycle)
         {
-            if (browser.SelectedIndices.Count > 0)
+            if (browser.SelectedIndices.Count == 0)
+                return;
+
+            string message = string.Empty;
+            string caption = "Confirm Delete";
+
+            int selectedCount = browser.SelectedIndices.Count;
+
+            if (recycle == RecycleOption.SendToRecycleBin)
             {
-                var selectedIndices = browser.SelectedIndices;
-                string fileName = string.Empty;
-                #region Delete one item
-                if (selectedIndices.Count == 1)
+                message = string.Format("Are you sure you want to move {0} item(s) to the Recycle Bin?", selectedCount);
+            }
+            else // DeletePermanently
+            {
+                message = string.Format("Are you sure you want to permanently delete {0} item(s)?", selectedCount);
+            }
+
+            DialogResult result = MessageBox.Show(message, caption, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+            if (result == DialogResult.No)
+            {
+                return; // 사용자가 '아니오'를 선택하면 삭제하지 않음
+            }
+
+            List<FileSystemInfo> itemsToDelete = new List<FileSystemInfo>();
+            foreach (int selectedIndex in browser.SelectedIndices)
+            {
+                if (selectedIndex >= 0 && selectedIndex < m_ShellItemInfo.Count) // 인덱스 유효성 검사
                 {
-                    fileName = browser.Items[selectedIndices[0]].Tag.ToString();
-                    DeleteFileDel deleteFunc = null;
-                    if (File.Exists(fileName))
-                        deleteFunc = FileSystem.DeleteFile;
-                    else/* if (Directory.Exists(fileName))*/
-                        deleteFunc = FileSystem.DeleteDirectory;
-
-                    try
-                    {
-                        deleteFunc(fileName, UIOption.AllDialogs, recycle, UICancelOption.ThrowException);
-                    }
-                    catch (OperationCanceledException) { }
-                    catch (Exception ex) { MessageBox.Show(ex.StackTrace); }
-                    finally
-                    {
-                        RefreshListView();
-                    }
+                    itemsToDelete.Add(m_ShellItemInfo[selectedIndex]);
                 }
-                #endregion Delete one item
-                #region Delete multiple items
-                else
+            }
+
+            if (itemsToDelete.Count == 0) // 실제로 삭제할 항목이 없는 경우
+            {
+                return;
+            }
+
+            List<Task> taskList = new List<Task>();
+            foreach (FileSystemInfo itemInfo in itemsToDelete) // FileSystemInfo 객체를 사용
+            {
+                string fileName = itemInfo.FullName; // FileSystemInfo에서 FullName 사용
+                DeleteFileDel deleteFunc = null;
+                if (File.Exists(fileName))
+                    deleteFunc = FileSystem.DeleteFile;
+                else if (Directory.Exists(fileName))
+                    deleteFunc = FileSystem.DeleteDirectory;
+
+                if (deleteFunc != null)
                 {
-                    string text = "Are you sure you want to ";
-                    if (recycle == RecycleOption.DeletePermanently)
-                        text += "permanently ";
-                    text += "delete these " + selectedIndices.Count + " items?";
-                    string caption = "Delete Multiple Items";
-                    DialogResult dr = MessageBox.Show(this, text, caption, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (dr == DialogResult.Yes)
-                    {
-                        DeleteFileDel deleteFunc = null;
-                        List<Tuple<string, DeleteFileDel>> list = new List<Tuple<string, DeleteFileDel>>();
-                        foreach (int i in selectedIndices)
-                        {
-                            fileName = browser.Items[i].Tag.ToString();
-                            if (File.Exists(fileName))
-                                deleteFunc = FileSystem.DeleteFile;
-                            else if (Directory.Exists(fileName))
-                                deleteFunc = FileSystem.DeleteDirectory;
-                            list.Add(Tuple.Create(fileName, deleteFunc));
-                        }
-                        foreach (var item in list)
-                        {
-                            fileName = item.Item1;
-                            deleteFunc = item.Item2;
-                            try
-                            {
-                                deleteFunc(fileName, UIOption.OnlyErrorDialogs, recycle, UICancelOption.ThrowException);
-                            }
-                            catch (OperationCanceledException) { }
-                            catch (Exception ex) { MessageBox.Show(ex.Message); }
-                            finally
-                            {
-                                RefreshListView();
-                            }
-                        }
-
-                    }
+                    Task task = Task.Run(() => deleteFunc(fileName, UIOption.AllDialogs, recycle, UICancelOption.ThrowException));
+                    taskList.Add(task);
                 }
-                #endregion Delete multiple items
+            }
 
+            foreach (Task currentTask in taskList)
+            {
+                try
+                {
+                    await currentTask;
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.StackTrace);
+                }
+                finally
+                {
+                    RefreshListView();
+                }
             }
         }
 
@@ -1287,5 +1290,26 @@ namespace TotalCommander.GUI
         }
         #endregion Check & Set folders permission
 
+        public void ApplyFont(Font font)
+        {
+            if (font == null) return;
+
+            // 파일 목록 ListView의 폰트 변경
+            if (browser != null)
+            {
+                browser.Font = font;
+            }
+
+            // 폴더 트리 NavigationPane의 폰트 변경
+            if (navigationPane != null)
+            {
+                navigationPane.Font = font;
+            }
+            // 경로 표시 TextBox 폰트도 변경 (선택 사항)
+            if (txtPath != null)
+            {
+                txtPath.Font = font;
+            }
+        }
     }
 }

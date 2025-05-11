@@ -46,6 +46,7 @@
             this.tsmiKeyboards = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator7 = new System.Windows.Forms.ToolStripSeparator();
             this.tsmiAbout = new System.Windows.Forms.ToolStripMenuItem();
+            this.tsmiFontSettings = new System.Windows.Forms.ToolStripMenuItem();
             this.tipButtons = new System.Windows.Forms.ToolTip(this.components);
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
@@ -115,9 +116,11 @@
             // 
             // tsmiConfiguration
             // 
+            this.tsmiConfiguration.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.tsmiFontSettings});
             this.tsmiConfiguration.Name = "tsmiConfiguration";
             this.tsmiConfiguration.Size = new System.Drawing.Size(93, 20);
-            this.tsmiConfiguration.Text = "Configuration";
+            this.tsmiConfiguration.Text = "&Configuration";
             // 
             // tsmiStart
             // 
@@ -201,6 +204,12 @@
             this.tsmiAbout.Name = "tsmiAbout";
             this.tsmiAbout.Size = new System.Drawing.Size(138, 22);
             this.tsmiAbout.Text = "&About...";
+            // 
+            // tsmiFontSettings
+            // 
+            this.tsmiFontSettings.Name = "tsmiFontSettings";
+            this.tsmiFontSettings.Size = new System.Drawing.Size(138, 22);
+            this.tsmiFontSettings.Text = "&Font Settings...";
             // 
             // toolStripSeparator1
             // 
@@ -551,6 +560,7 @@
         private System.Windows.Forms.ToolStripMenuItem tsmiKeyboards;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator7;
         private System.Windows.Forms.ToolStripMenuItem tsmiAbout;
+        private System.Windows.Forms.ToolStripMenuItem tsmiFontSettings;
         private System.Windows.Forms.ToolTip tipButtons;
         private System.Windows.Forms.ToolStripButton tsbtnRefreshWindows;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
