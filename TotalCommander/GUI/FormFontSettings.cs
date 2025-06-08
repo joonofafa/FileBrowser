@@ -8,6 +8,7 @@ namespace TotalCommander.GUI
     public partial class FormFontSettings : Form
     {
         public Font SelectedFont { get; private set; }
+        public bool ApplyToStatusBar { get; private set; }
         private Font m_InitialFont;
 
         public FormFontSettings(Font currentFont)
@@ -15,6 +16,7 @@ namespace TotalCommander.GUI
             InitializeComponent();
             m_InitialFont = currentFont;
             SelectedFont = currentFont; // 기본값은 현재 폰트
+            ApplyToStatusBar = true; // 기본값은 상태창에도 적용
         }
 
         private void FormFontSettings_Load(object sender, EventArgs e)
@@ -50,6 +52,10 @@ namespace TotalCommander.GUI
                 if (comboBoxFontFamily.SelectedIndex == -1 && comboBoxFontFamily.Items.Count > 0) comboBoxFontFamily.SelectedIndex = 0;
                 comboBoxFontSize.SelectedItem = 10;
             }
+            
+            // 하단 상태창 설정 초기화
+            checkBoxApplyToStatusBar.Checked = true;
+            
             UpdatePreview();
         }
 
@@ -69,8 +75,24 @@ namespace TotalCommander.GUI
                 if (checkBoxItalic.Checked)
                     style |= FontStyle.Italic;
 
-                textBoxPreview.Font = new Font(fontFamilyName, fontSize, style);
+                // 주 프리뷰 텍스트 업데이트
+                Font previewFont = new Font(fontFamilyName, fontSize, style);
+                textBoxPreview.Font = previewFont;
                 textBoxPreview.Text = "AaBbYyZz 가나다라 123"; // 샘플 텍스트
+                
+                // 상태창 프리뷰도 업데이트 (상태창은 일반적으로 크기가 약간 작을 수 있음)
+                if (checkBoxApplyToStatusBar.Checked)
+                {
+                    // 상태창 폰트 크기는 주 폰트보다 1pt 작게 설정 (옵션)
+                    float statusFontSize = Math.Max(fontSize - 1, 8); // 최소 크기 8pt로 제한
+                    Font statusFont = new Font(fontFamilyName, statusFontSize, style);
+                    labelStatusBarPreview.Font = statusFont;
+                }
+                else
+                {
+                    // 기본 시스템 폰트로 설정
+                    labelStatusBarPreview.Font = SystemFonts.StatusFont;
+                }
             }
             catch (Exception ex)
             {
@@ -102,13 +124,17 @@ namespace TotalCommander.GUI
             }
         }
 
-
         private void checkBoxBold_CheckedChanged(object sender, EventArgs e)
         {
             UpdatePreview();
         }
 
         private void checkBoxItalic_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdatePreview();
+        }
+        
+        private void checkBoxApplyToStatusBar_CheckedChanged(object sender, EventArgs e)
         {
             UpdatePreview();
         }
@@ -129,6 +155,7 @@ namespace TotalCommander.GUI
                         style |= FontStyle.Italic;
 
                     SelectedFont = new Font(fontFamilyName, fontSize, style);
+                    ApplyToStatusBar = checkBoxApplyToStatusBar.Checked;
                     this.DialogResult = DialogResult.OK;
                 }
                 catch(Exception ex)

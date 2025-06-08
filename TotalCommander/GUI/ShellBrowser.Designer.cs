@@ -43,13 +43,14 @@
             // 
             // lblBotStatus
             // 
-            this.lblBotStatus.AutoSize = true;
+            this.lblBotStatus.AutoSize = false;
             this.lblBotStatus.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.lblBotStatus.Location = new System.Drawing.Point(0, 570);
             this.lblBotStatus.Name = "lblBotStatus";
-            this.lblBotStatus.Size = new System.Drawing.Size(82, 15);
+            this.lblBotStatus.Size = new System.Drawing.Size(524, 13);
             this.lblBotStatus.TabIndex = 22;
             this.lblBotStatus.Text = "Bottom Status";
+            this.lblBotStatus.Padding = new System.Windows.Forms.Padding(1, 0, 0, 0);
             // 
             // lblTopStorageStatus
             // 
@@ -60,6 +61,7 @@
             this.lblTopStorageStatus.TabIndex = 21;
             this.lblTopStorageStatus.Text = "StorageStatus";
             this.lblTopStorageStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblTopStorageStatus.Visible = false;
             // 
             // disksBrowser
             // 
@@ -71,6 +73,7 @@
             this.disksBrowser.Size = new System.Drawing.Size(60, 24);
             this.disksBrowser.TabIndex = 6;
             this.disksBrowser.TabStop = false;
+            this.disksBrowser.Visible = false;
             // 
             // splMainView
             // 
@@ -79,7 +82,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.splMainView.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.splMainView.FixedPanel = System.Windows.Forms.FixedPanel.Panel1;
-            this.splMainView.Location = new System.Drawing.Point(0, 46);
+            this.splMainView.Location = new System.Drawing.Point(0, 0);
             this.splMainView.Name = "splMainView";
             // 
             // splMainView.Panel1
@@ -89,7 +92,7 @@
             // splMainView.Panel2
             // 
             this.splMainView.Panel2.Controls.Add(this.browser);
-            this.splMainView.Size = new System.Drawing.Size(524, 518);
+            this.splMainView.Size = new System.Drawing.Size(524, 564);
             this.splMainView.SplitterDistance = 173;
             this.splMainView.SplitterWidth = 3;
             this.splMainView.TabIndex = 23;
@@ -127,6 +130,7 @@
             this.txtPath.Size = new System.Drawing.Size(524, 23);
             this.txtPath.TabIndex = 24;
             this.txtPath.TabStop = false;
+            this.txtPath.Visible = false;
             // 
             // ShellBrowser
             // 

@@ -38,7 +38,11 @@ namespace TotalCommander.GUI
             this.textBoxPreview = new System.Windows.Forms.Label(); // Label로 변경하여 배경색 없이 텍스트만 보이도록
             this.buttonOK = new System.Windows.Forms.Button();
             this.buttonCancel = new System.Windows.Forms.Button();
+            this.groupBoxStatusBar = new System.Windows.Forms.GroupBox();
+            this.checkBoxApplyToStatusBar = new System.Windows.Forms.CheckBox();
+            this.labelStatusBarPreview = new System.Windows.Forms.Label();
             this.groupBoxPreview.SuspendLayout();
+            this.groupBoxStatusBar.SuspendLayout();
             this.SuspendLayout();
             // 
             // labelFontFamily
@@ -121,12 +125,44 @@ namespace TotalCommander.GUI
             this.textBoxPreview.Text = "AaBbYyZz 가나다라 123";
             this.textBoxPreview.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
+            // groupBoxStatusBar
+            // 
+            this.groupBoxStatusBar.Controls.Add(this.labelStatusBarPreview);
+            this.groupBoxStatusBar.Controls.Add(this.checkBoxApplyToStatusBar);
+            this.groupBoxStatusBar.Location = new System.Drawing.Point(12, 180);
+            this.groupBoxStatusBar.Name = "groupBoxStatusBar";
+            this.groupBoxStatusBar.Size = new System.Drawing.Size(300, 70);
+            this.groupBoxStatusBar.TabIndex = 7;
+            this.groupBoxStatusBar.TabStop = false;
+            this.groupBoxStatusBar.Text = "하단 상태창";
+            // 
+            // checkBoxApplyToStatusBar
+            // 
+            this.checkBoxApplyToStatusBar.AutoSize = true;
+            this.checkBoxApplyToStatusBar.Checked = true;
+            this.checkBoxApplyToStatusBar.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxApplyToStatusBar.Location = new System.Drawing.Point(10, 20);
+            this.checkBoxApplyToStatusBar.Name = "checkBoxApplyToStatusBar";
+            this.checkBoxApplyToStatusBar.Size = new System.Drawing.Size(194, 16);
+            this.checkBoxApplyToStatusBar.TabIndex = 0;
+            this.checkBoxApplyToStatusBar.Text = "하단 상태창에도 같은 폰트 적용";
+            this.checkBoxApplyToStatusBar.UseVisualStyleBackColor = true;
+            // 
+            // labelStatusBarPreview
+            // 
+            this.labelStatusBarPreview.AutoSize = true;
+            this.labelStatusBarPreview.Location = new System.Drawing.Point(10, 45);
+            this.labelStatusBarPreview.Name = "labelStatusBarPreview";
+            this.labelStatusBarPreview.Size = new System.Drawing.Size(282, 12);
+            this.labelStatusBarPreview.TabIndex = 1;
+            this.labelStatusBarPreview.Text = "0 files, 0 bytes (총 0 bytes) | 디렉토리 5, 파일 10";
+            // 
             // buttonOK
             // 
-            this.buttonOK.Location = new System.Drawing.Point(156, 180);
+            this.buttonOK.Location = new System.Drawing.Point(156, 260);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(75, 23);
-            this.buttonOK.TabIndex = 7;
+            this.buttonOK.TabIndex = 8;
             this.buttonOK.Text = "확인";
             this.buttonOK.UseVisualStyleBackColor = true;
             this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
@@ -134,10 +170,10 @@ namespace TotalCommander.GUI
             // buttonCancel
             // 
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(237, 180);
+            this.buttonCancel.Location = new System.Drawing.Point(237, 260);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
-            this.buttonCancel.TabIndex = 8;
+            this.buttonCancel.TabIndex = 9;
             this.buttonCancel.Text = "취소";
             this.buttonCancel.UseVisualStyleBackColor = true;
             this.buttonCancel.Click += new System.EventHandler(this.buttonCancel_Click);
@@ -148,9 +184,10 @@ namespace TotalCommander.GUI
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.buttonCancel;
-            this.ClientSize = new System.Drawing.Size(324, 215);
+            this.ClientSize = new System.Drawing.Size(324, 295);
             this.Controls.Add(this.buttonCancel);
             this.Controls.Add(this.buttonOK);
+            this.Controls.Add(this.groupBoxStatusBar);
             this.Controls.Add(this.groupBoxPreview);
             this.Controls.Add(this.checkBoxItalic);
             this.Controls.Add(this.checkBoxBold);
@@ -168,6 +205,8 @@ namespace TotalCommander.GUI
             this.Text = "글꼴 설정";
             this.Load += new System.EventHandler(this.FormFontSettings_Load);
             this.groupBoxPreview.ResumeLayout(false);
+            this.groupBoxStatusBar.ResumeLayout(false);
+            this.groupBoxStatusBar.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -185,5 +224,8 @@ namespace TotalCommander.GUI
         private System.Windows.Forms.Label textBoxPreview; // Label로 변경
         private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.Button buttonCancel;
+        private System.Windows.Forms.GroupBox groupBoxStatusBar;
+        private System.Windows.Forms.Label labelStatusBarPreview;
+        private System.Windows.Forms.CheckBox checkBoxApplyToStatusBar;
     }
 } 

@@ -16,7 +16,14 @@ namespace TotalCommander
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form_TotalCommander());
+            try
+            {
+                Application.Run(new Form_TotalCommander());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.ToString(), "Unhandled Exception");
+            }
         }
     }
 }

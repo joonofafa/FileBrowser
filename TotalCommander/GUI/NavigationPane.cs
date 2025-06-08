@@ -390,5 +390,174 @@ namespace TotalCommander.GUI
                 }
             }
         }
+
+        /// <summary>
+        /// 지정된 경로에 해당하는 노드를 찾아 선택합니다.
+        /// </summary>
+        /// <param name="path">선택할 경로</param>
+        /// <returns>노드를 찾아 선택했으면 true, 아니면 false</returns>
+        public bool SelectNodeByPath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return false;
+                
+            // 경로 정규화
+            path = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar);
+            
+            // 모든 노드를 검색
+            TreeNode foundNode = FindNodeByPath(this.Nodes, path);
+            
+            if (foundNode != null)
+            {
+                // 발견한 노드의 부모 노드들을 모두 확장
+                ExpandParentNodes(foundNode);
+                
+                // 노드 선택
+                this.SelectedNode = foundNode;
+                foundNode.EnsureVisible();
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /// <summary>
+        /// 지정된 경로에 해당하는 노드를 재귀적으로 찾습니다.
+        /// </summary>
+        private TreeNode FindNodeByPath(TreeNodeCollection nodes, string path)
+        {
+            foreach (TreeNode node in nodes)
+            {
+                // 현재 노드 태그와 경로 비교
+                if (node.Tag != null && node.Tag.ToString().Equals(path, StringComparison.OrdinalIgnoreCase))
+                {
+                    return node;
+                }
+                
+                // 특별한 폴더에 대한 처리
+                if (IsSpecialFolder(node, path))
+                {
+                    return node;
+                }
+                
+                // 하위 노드 검색
+                if (node.Nodes.Count > 0)
+                {
+                    // 노드 확장 및 하위 노드 검색
+                    TreeNode childNode = FindNodeByPath(node.Nodes, path);
+                    if (childNode != null)
+                    {
+                        return childNode;
+                    }
+                }
+                
+                // 경로가 현재 노드의 하위 경로인 경우, 노드를 확장해서 하위 노드 로드
+                if (node.Tag != null && 
+                    !IsSpecialFolders(node.Tag.ToString()) && 
+                    path.StartsWith(node.Tag.ToString(), StringComparison.OrdinalIgnoreCase) &&
+                    node.Nodes.Count == 1 && 
+                    string.IsNullOrEmpty(node.Nodes[0].Text))
+                {
+                    // 노드 확장 (하위 노드 로드)
+                    node.Expand();
+                    
+                    // 확장 후 하위 노드 검색
+                    TreeNode expandedChildNode = FindNodeByPath(node.Nodes, path);
+                    if (expandedChildNode != null)
+                    {
+                        return expandedChildNode;
+                    }
+                }
+            }
+            
+            return null;
+        }
+        
+        /// <summary>
+        /// 특별한 폴더인지 확인합니다.
+        /// </summary>
+        private bool IsSpecialFolder(TreeNode node, string path)
+        {
+            if (node.Tag == null) return false;
+            
+            // 특별한 폴더 경로 처리
+            string specialPath = node.Tag.ToString();
+            
+            // 데스크톱, 다운로드 등 특별한 폴더 확인
+            if (specialPath.Equals(SpecialDirectories.Desktop, StringComparison.OrdinalIgnoreCase) && 
+                path.Equals(SpecialDirectories.Desktop, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            if (specialPath.Equals(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), StringComparison.OrdinalIgnoreCase) && 
+                path.Equals(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            if (specialPath.Equals(SpecialDirectories.MyDocuments, StringComparison.OrdinalIgnoreCase) && 
+                path.Equals(SpecialDirectories.MyDocuments, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            if (specialPath.Equals(SpecialDirectories.MyPictures, StringComparison.OrdinalIgnoreCase) && 
+                path.Equals(SpecialDirectories.MyPictures, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            if (specialPath.Equals(SpecialDirectories.MyMusic, StringComparison.OrdinalIgnoreCase) && 
+                path.Equals(SpecialDirectories.MyMusic, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            if (specialPath.Equals(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), StringComparison.OrdinalIgnoreCase) && 
+                path.Equals(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos), StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            // 드라이브 루트 확인
+            if (IsRootDrive(specialPath) && IsRootDrive(path) && 
+                Path.GetPathRoot(specialPath).Equals(Path.GetPathRoot(path), StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        /// <summary>
+        /// 루트 드라이브인지 확인합니다.
+        /// </summary>
+        private bool IsRootDrive(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+            
+            try
+            {
+                string root = Path.GetPathRoot(path);
+                return path.Equals(root, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        
+        /// <summary>
+        /// 노드의 모든 부모 노드를 확장합니다.
+        /// </summary>
+        private void ExpandParentNodes(TreeNode node)
+        {
+            if (node.Parent != null)
+            {
+                ExpandParentNodes(node.Parent);
+                node.Parent.Expand();
+            }
+        }
     }
 }

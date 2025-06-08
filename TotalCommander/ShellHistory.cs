@@ -53,7 +53,7 @@ namespace TotalCommander
             m_Current = m_History.Count - 1;
         }
 
-        internal string MoveBackward()
+        public string MoveBackward()
         {
             if (m_Current < 0)
             {
@@ -63,7 +63,7 @@ namespace TotalCommander
             return m_History[m_Current];
         }
 
-        internal string MoveForward()
+        public string MoveForward()
         {
             if (m_Current == m_History.Count - 1)
             {
@@ -71,6 +71,30 @@ namespace TotalCommander
             }
             m_Current += 1;
             return m_History[m_Current];
+        }
+
+        /// <summary>
+        /// 뒤로 이동하여 이전 경로를 반환합니다. 이동할 수 없는 경우 빈 문자열을 반환합니다.
+        /// </summary>
+        public string Backward()
+        {
+            if (CanNavigateBack)
+            {
+                return MoveBackward();
+            }
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// 앞으로 이동하여 다음 경로를 반환합니다. 이동할 수 없는 경우 빈 문자열을 반환합니다.
+        /// </summary>
+        public string Forward()
+        {
+            if (CanNavigateForward)
+            {
+                return MoveForward();
+            }
+            return string.Empty;
         }
 
         internal bool CanNavigateBack

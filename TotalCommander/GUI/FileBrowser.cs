@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
+using System.Collections.Generic;
 
 namespace TotalCommander.GUI
 {
@@ -7,6 +8,9 @@ namespace TotalCommander.GUI
     {
         #region Fields
         //private ListViewColumnSorter m_ColumnSorter = new ListViewColumnSorter();
+        
+        // 컬럼 너비 저장 관련 이벤트
+        public new event EventHandler ColumnWidthChanged;
         #endregion Fields
 
         #region Overrided functions
@@ -64,6 +68,15 @@ namespace TotalCommander.GUI
             }
             base.OnKeyDown(e);
         }
+        
+        // 컬럼 너비 변경 감지를 위한 메서드 오버라이드
+        protected override void OnColumnWidthChanged(ColumnWidthChangedEventArgs e)
+        {
+            base.OnColumnWidthChanged(e);
+            
+            // 외부 이벤트 핸들러에게 변경 사항 통보
+            ColumnWidthChanged?.Invoke(this, EventArgs.Empty);
+        }
 
         #endregion Overrided functions
 
@@ -94,6 +107,46 @@ namespace TotalCommander.GUI
             this.Columns.Add("Attr", 35);  // 4
             int tmp = this.Width - 235;
             this.Columns[0].Width = (tmp > 60) ? tmp : 60;
+        }
+        
+        /// <summary>
+        /// 컬럼 너비 설정을 적용합니다.
+        /// </summary>
+        /// <param name="columnWidths">컬럼 인덱스를 키로, 너비를 값으로 하는 딕셔너리</param>
+        public void ApplyColumnWidths(Dictionary<int, int> columnWidths)
+        {
+            if (columnWidths == null || this.View != View.Details || this.Columns.Count == 0)
+                return;
+                
+            foreach (var columnInfo in columnWidths)
+            {
+                int columnIndex = columnInfo.Key;
+                int width = columnInfo.Value;
+                
+                if (columnIndex >= 0 && columnIndex < this.Columns.Count && width > 0)
+                {
+                    this.Columns[columnIndex].Width = width;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 현재 컬럼 너비 설정을 가져옵니다.
+        /// </summary>
+        /// <returns>컬럼 인덱스를 키로, 너비를 값으로 하는 딕셔너리</returns>
+        public Dictionary<int, int> GetColumnWidths()
+        {
+            Dictionary<int, int> columnWidths = new Dictionary<int, int>();
+            
+            if (this.View == View.Details && this.Columns.Count > 0)
+            {
+                for (int i = 0; i < this.Columns.Count; i++)
+                {
+                    columnWidths[i] = this.Columns[i].Width;
+                }
+            }
+            
+            return columnWidths;
         }
 
         public void ChangeViewMode(View view)
@@ -126,6 +179,9 @@ namespace TotalCommander.GUI
                 }
                 int tmp = this.Width - total;
                 this.Columns[0].Width = (tmp > 60) ? tmp : 60;
+                
+                // 크기 변경 후 컬럼 너비 변경 이벤트 발생
+                ColumnWidthChanged?.Invoke(this, EventArgs.Empty);
             }
         }
         

@@ -56,6 +56,9 @@
             this.btnCancel = new System.Windows.Forms.Button();
             this.btnOpenSaveDialog = new System.Windows.Forms.Button();
             this.panel2 = new System.Windows.Forms.Panel();
+            this.timerProgress = new System.Windows.Forms.Timer();
+            this.lblStatus = new System.Windows.Forms.Label();
+            this.progressBar1 = new System.Windows.Forms.ProgressBar();
             this.groupBox1.SuspendLayout();
             this.gbEncryption.SuspendLayout();
             this.panel1.SuspendLayout();
@@ -353,11 +356,33 @@
             this.panel2.Size = new System.Drawing.Size(290, 30);
             this.panel2.TabIndex = 20;
             // 
+            // timerProgress
+            // 
+            this.timerProgress.Interval = 1000;
+            this.timerProgress.Tick += new System.EventHandler(this.timerProgress_Tick);
+            // 
+            // lblStatus
+            // 
+            this.lblStatus.AutoSize = true;
+            this.lblStatus.Location = new System.Drawing.Point(24, 280);
+            this.lblStatus.Name = "lblStatus";
+            this.lblStatus.Size = new System.Drawing.Size(0, 15);
+            this.lblStatus.TabIndex = 21;
+            // 
+            // progressBar1
+            // 
+            this.progressBar1.Location = new System.Drawing.Point(24, 298);
+            this.progressBar1.Name = "progressBar1";
+            this.progressBar1.Size = new System.Drawing.Size(596, 23);
+            this.progressBar1.TabIndex = 22;
+            // 
             // FormPacking
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(624, 309);
+            this.Controls.Add(this.progressBar1);
+            this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.btnOpenSaveDialog);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnOK);
@@ -425,5 +450,8 @@
         private System.Windows.Forms.Button btnCancel;
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Button btnOpenSaveDialog;
+        private System.Windows.Forms.Timer timerProgress;
+        private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.ProgressBar progressBar1;
     }
 }

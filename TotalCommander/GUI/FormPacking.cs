@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,471 +15,362 @@ namespace TotalCommander.GUI
 {
     public partial class FormPacking : Form
     {
-        string[] arrPaths;
-        static readonly string Path7za = @"7za.exe";
-        static readonly string SevenZipHash256 = "E6855553350FA6FB23E05839C7F3EF140DAD29D9A0E3495DE4D1B17A9FBF5CA4";
-        static bool Is7zaExistAndTrusted = false;
+        #region Constants
 
-        public static string GetSha256HexString(string fullPath)
+        // 압축 레벨 열거형
+        private enum CompressionLevel
         {
-            string hexString;
-            using (var fs = new FileStream(fullPath, FileMode.Open))
-            using (BufferedStream bs = new BufferedStream(fs))
-            {
-                using (var sha256 = new System.Security.Cryptography.SHA256Managed())
-                {
-                    byte[] hash = sha256.ComputeHash(bs);
-                    hexString = BitConverter.ToString(hash).Replace("-", String.Empty);
-                }
-            }
-            return hexString;
+            NoCompression = 0,
+            Fastest = 1,
+            Optimal = 9,
+            SmallestSize = 9
         }
 
-        public static bool Check7zaTrusted()
+        // 업데이트 모드 열거형
+        private enum UpdateMode
         {
-            FileInfo info = new FileInfo(Path7za);
-            if (info.Exists && !Is7zaExistAndTrusted)
-            {
-                string hash = GetSha256HexString(info.FullName);
-                Is7zaExistAndTrusted = hash.Equals(SevenZipHash256);
-            }
-            return Is7zaExistAndTrusted;
+            Add = 0,
+            Update = 1,
+            Fresh = 2,
+            Sync = 3
         }
+
+        #endregion
+
+        #region Fields
+
+        public string[] FileList { get; set; }
+        public string DestArchive { get; set; }
+        
+        #endregion
+
+        #region Constructor
 
         public FormPacking()
         {
-            if (File.Exists(Path7za))
-                Check7zaTrusted();
-
-            if (!Is7zaExistAndTrusted)
-            {
-                FatalError(this.FindForm(), "The packer is broken.");
-                this.Close();
-            }
-
             InitializeComponent();
-            Init();
+            FormClosed += (s, e) => { timerProgress.Stop(); };
+            btnOpenSaveDialog.Click += btnArchiveOpenFolder_Click;
+            btnOK.Click += btnAdd_Click;
+            btnCancel.Click += btnCancel_Click;
+            FormClosing += FormPacking_FormClosing;
+            Load += FormPacking_Load;
         }
 
-        public FormPacking(IEnumerable<string> paths): this()
+        public FormPacking(string[] filePaths) : this()
         {
-            arrPaths = paths.ToArray();
-            if (arrPaths == null) return;
-            string directory = Path.GetDirectoryName(arrPaths[0]);
-            lblSaveFilePath.Text = directory;
-
-            string archiveName;
-            if (arrPaths.Length == 1)
+            FileList = filePaths;
+            if (filePaths.Length > 0)
             {
-                archiveName = Path.GetFileNameWithoutExtension(arrPaths[0]);
+                // 기본 압축 파일 이름 설정 (첫 번째 파일이 있는 디렉토리에 생성)
+                string directory = Path.GetDirectoryName(filePaths[0]);
+                DestArchive = Path.Combine(directory, "Archive.zip");
             }
-            else
+        }
+
+        #endregion
+
+        #region Form Events
+
+        private void FormPacking_Load(object sender, EventArgs e)
+        {
+            txtFileName.Text = FileList != null ? string.Join(Environment.NewLine, FileList) : string.Empty;
+            txtFileName.Text = DestArchive != null ? DestArchive : string.Empty;
+
+            this.Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            
+            InitCompressionLevelComboBox();
+            InitArchiveFormatComboBox();
+            InitUpdateModeComboBox();
+            
+            // UI 초기화
+            progressBar1.Visible = false;
+            lblStatus.Visible = false;
+            timerProgress.Enabled = false;
+        }
+
+        private void FormPacking_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            timerProgress.Stop();
+        }
+
+        private void btnArchiveOpenFolder_Click(object sender, EventArgs e)
+        {
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
             {
-                archiveName = Path.GetFileName(directory);
-                if (String.IsNullOrEmpty(archiveName))
-                    archiveName = Path.GetPathRoot(directory).Replace(@":\", "");
+                saveFileDialog.Filter = "ZIP 파일 (*.zip)|*.zip|모든 파일 (*.*)|*.*";
+                saveFileDialog.FilterIndex = 1;
+                saveFileDialog.RestoreDirectory = true;
+                saveFileDialog.FileName = "archive.zip";
+
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    txtFileName.Text = saveFileDialog.FileName;
+                }
             }
-            txtFileName.Text = archiveName + ".zip";
         }
 
-        void Init()
+        private void btnAdd_Click(object sender, EventArgs e)
         {
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.ShowInTaskbar = false;
+            if (string.IsNullOrWhiteSpace(txtFileName.Text))
+            {
+                MessageBox.Show("압축 파일 경로를 지정해주세요.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-            txtPass1.UseSystemPasswordChar = txtPass2.UseSystemPasswordChar = true;
-            btnOpenSaveDialog.Click += BtnOpenSaveDialog_Click;
-            btnOK.Click += BtnOK_Click;
-            btnCancel.Click += BtnCancel_Click;
-            btnShowPassword.MouseDown += BtnShowPassword_MouseDown;
-            btnShowPassword.MouseUp += BtnShowPassword_MouseUp;
+            if (FileList == null || FileList.Length == 0)
+            {
+                MessageBox.Show("압축할 파일이 없습니다.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
-            InitArchiveFormat();
-            InitCompressionLevel(ArchiveFormat.p7z);
-            InitUpdateMode();
-            InitPathMode();
-            InitEncryptionMethod(ArchiveFormat.zip);
+            // 압축 옵션 설정
+            CompressionLevel level = (CompressionLevel)((ComboBoxItem)cboCompressionLevel.SelectedItem).Value;
+            
+            // 업데이트 모드 설정
+            UpdateMode updateMode = (UpdateMode)((ComboBoxItem)cboUpdateMode.SelectedItem).Value;
+
+            // UI 업데이트
+            progressBar1.Value = 0;
+            progressBar1.Visible = true;
+            lblStatus.Text = "압축 중...";
+            lblStatus.Visible = true;
+            timerProgress.Start();
+            
+            // 압축 작업 시작
+            CompressFiles(txtFileName.Text, FileList, level, updateMode);
         }
 
-        #region Button events
-        void BtnShowPassword_MouseUp(object sender, MouseEventArgs e)
+        private void btnCancel_Click(object sender, EventArgs e)
         {
-            txtPass1.UseSystemPasswordChar = txtPass2.UseSystemPasswordChar = true;
-        }
-
-        void BtnShowPassword_MouseDown(object sender, MouseEventArgs e)
-        {
-            txtPass1.UseSystemPasswordChar = txtPass2.UseSystemPasswordChar = false;
-        }
-
-        void BtnCancel_Click(object sender, EventArgs e)
-        {
+            timerProgress.Stop();
+            this.DialogResult = DialogResult.Cancel;
             this.Close();
         }
 
-        async void BtnOK_Click(object sender, EventArgs e)
+        #endregion
+
+        #region Compression Methods
+
+        private void CompressFiles(string archivePath, string[] files, CompressionLevel level, UpdateMode updateMode)
         {
-            string archiveName = Path.Combine(lblSaveFilePath.Text, txtFileName.Text);
-            if (String.IsNullOrWhiteSpace(archiveName)) return;
-
-            string command = "a";
-
-            StringBuilder sbSwitches = new StringBuilder("-y"); // assume yes on all commands
-            #region Archive format
-            sbSwitches.Append(" -t");
-            var format = (ArchiveFormat)cboArchiveFormat.SelectedItem;
-            switch (format)
-            {
-                case ArchiveFormat.p7z:
-                    sbSwitches.Append("7z");
-                    break;
-                default:
-                    sbSwitches.Append(format.ToString());
-                    break;
-            }
-            #endregion Archive format
-
-            #region Encryption
-            bool useEncrypt = !String.IsNullOrEmpty(txtPass1.Text) && gbEncryption.Enabled;
-            string password = "";
-            if (useEncrypt)
-            {
-                password = txtPass1.Text;
-                if (!password.Equals(txtPass2.Text))
-                {
-                    FatalError(this.FindForm(), "Password does not match.");
-                    return;
-                }
-                sbSwitches.AppendFormat(" -p{0}", password);
-            }
-            #endregion Encryption
-
-            /// Compression level
-            var level = (CompressionLevel)((ComboBoxItem)cboCompressionLevel.SelectedItem).Value;
-            sbSwitches.AppendFormat(" -mx{0}", (int)level);
-
-            var updateMode = (UpdateMode)((ComboBoxItem)cboUpdateMode.SelectedItem).Value;
-            #region Update mode
-            switch (updateMode)
-            {
-                case UpdateMode.AddAndReplace:
-                    break;
-                case UpdateMode.UpdateAndAdd:
-                    command = "u ";
-                    break;
-                case UpdateMode.FreshenExisting:
-                    sbSwitches.Append(" -up1q1r0x1y2z1w2");
-                    break;
-                case UpdateMode.Synchronize:
-                    sbSwitches.Append(" -up1q0r2x1y2z1w2");
-                    break;
-            }
-            #endregion Update mode
-
-            #region Path mode
-
-            #endregion Path mode
-
-            #region combobox
-            if (chkSFX.Checked)
-                sbSwitches.Append(" -spf");
-            if (chkDeleteAfterCompression.Checked)
-                sbSwitches.Append(" -sdel");
-            #endregion combobox
-
-            #region Run 7za.exe
-
-            var fileLists = String.Concat(Path.GetTempFileName(), Guid.NewGuid().ToString(), ".txt");
-            File.WriteAllLines(fileLists, arrPaths);
-
-            var pInfo = new System.Diagnostics.ProcessStartInfo()
-            {
-                FileName = Path7za,
-                Arguments = String.Format("{0} \"{1}\" @\"{2}\" {3}", command, archiveName, fileLists, sbSwitches.ToString()),
-                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
-            };
-            System.Diagnostics.Process x = null;
             try
             {
-                btnOK.Enabled = false;
-                x = System.Diagnostics.Process.Start(pInfo);
-
-                Task task = Task.Run(() => x.WaitForExit());
-                await task;
-                if (task.IsCompleted)
+                // 백그라운드에서 압축 작업 수행
+                BackgroundWorker worker = new BackgroundWorker();
+                worker.WorkerReportsProgress = true;
+                worker.DoWork += (s, e) => 
                 {
-                    switch (x.ExitCode)
+                    try
                     {
-                        case 0: break;
-                        case 1: FatalError(this.FindForm(), @"Warning (Non fatal error(s)).
-For example, one or more files were locked by some other application, so they were not compressed.",
-                                                                                                       MessageBoxIcon.Information);
-                            break;
-                        case 2: FatalError(this.FindForm(), "Some errors occur"); break;
-                        case 7: FatalError(this.FindForm(), "Arguments errors occur" + Environment.NewLine +
-                           pInfo.Arguments );
-                            break;
-                        case 8: FatalError(this.FindForm(), "Not enough sufficient memory for operation"); break;
-                        case 255: FatalError(this.FindForm(), "User stops the operation"); break;
+                        // .NET의 압축 기능 사용
+                        bool fileExists = File.Exists(archivePath);
+                        
+                        // 업데이트 모드에 따라 처리
+                        if (fileExists && updateMode == UpdateMode.Fresh)
+                        {
+                            File.Delete(archivePath);
+                            fileExists = false;
+                        }
+                        
+                        if (!fileExists)
+                        {
+                            // 새로운 ZIP 파일 생성
+                            using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+                            {
+                                int count = 0;
+                                foreach (string file in files)
+                                {
+                                    if (File.Exists(file))
+                                    {
+                                        string entryName = Path.GetFileName(file);
+                                        ZipArchiveEntry entry = archive.CreateEntry(entryName, 
+                                            (System.IO.Compression.CompressionLevel)level);
+                                        
+                                        using (Stream entryStream = entry.Open())
+                                        using (FileStream fs = new FileStream(file, FileMode.Open, FileAccess.Read))
+                                        {
+                                            fs.CopyTo(entryStream);
+                                        }
+                                        
+                                        count++;
+                                        int progress = (int)((count / (double)files.Length) * 100);
+                                        worker.ReportProgress(progress);
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // 기존 ZIP 파일 업데이트
+                            using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Update))
+                            {
+                                int count = 0;
+                                foreach (string file in files)
+                                {
+                                    if (File.Exists(file))
+                                    {
+                                        string entryName = Path.GetFileName(file);
+                                        
+                                        // 기존 항목 제거 (업데이트 모드일 경우)
+                                        ZipArchiveEntry existingEntry = archive.GetEntry(entryName);
+                                        if (existingEntry != null)
+                                        {
+                                            existingEntry.Delete();
+                                        }
+                                        
+                                        // 새 항목 추가
+                                        ZipArchiveEntry entry = archive.CreateEntry(entryName, 
+                                            (System.IO.Compression.CompressionLevel)level);
+                                        
+                                        using (Stream entryStream = entry.Open())
+                                        using (FileStream fs = new FileStream(file, FileMode.Open, FileAccess.Read))
+                                        {
+                                            fs.CopyTo(entryStream);
+                                        }
+                                        
+                                        count++;
+                                        int progress = (int)((count / (double)files.Length) * 100);
+                                        worker.ReportProgress(progress);
+                                    }
+                                }
+                            }
+                        }
                     }
-                }
+                    catch (Exception ex)
+                    {
+                        e.Result = ex;
+                    }
+                };
+                
+                worker.ProgressChanged += (s, e) =>
+                {
+                    // UI 업데이트
+                    progressBar1.Value = e.ProgressPercentage;
+                    lblStatus.Text = $"압축 중... {e.ProgressPercentage}%";
+                };
+                
+                worker.RunWorkerCompleted += (s, e) =>
+                {
+                    timerProgress.Stop();
+                    
+                    if (e.Result is Exception ex)
+                    {
+                        MessageBox.Show($"압축 중 오류가 발생했습니다: {ex.Message}", 
+                                      "압축 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        progressBar1.Visible = false;
+                        lblStatus.Visible = false;
+                    }
+                    else
+                    {
+                        progressBar1.Value = 100;
+                        lblStatus.Text = "압축 완료!";
+                        MessageBox.Show("파일 압축이 완료되었습니다.", "완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        this.DialogResult = DialogResult.OK;
+                        this.Close();
+                    }
+                };
+                
+                worker.RunWorkerAsync();
             }
-            finally
+            catch (Exception ex)
             {
-                if (null != x) x.Close();
-                this.DialogResult = DialogResult.OK;
-                File.Delete(fileLists);
-            }
-
-            #endregion Run 7za.exe
-        }
-
-        void BtnOpenSaveDialog_Click(object sender, EventArgs e)
-        {
-            string directory = Path.GetDirectoryName(arrPaths[0]);
-            using (var ofd = new SaveFileDialog()
-            {
-                CheckPathExists = true,
-                ValidateNames = true,
-                InitialDirectory = directory,
-                FileName = txtFileName.Text
-            })
-            {
-                var dResult = ofd.ShowDialog(this.FindForm());
-                if (dResult == DialogResult.OK)
-                {
-                    txtFileName.Text = Path.GetFileName(ofd.FileName);
-                    lblSaveFilePath.Text = Path.GetDirectoryName(ofd.FileName);
-                }
-            }
-        }
-        #endregion Button events
-
-        #region Init combobox contents
-        void InitArchiveFormat()
-        {
-            cboArchiveFormat.DataSource = Enum.GetValues(typeof(ArchiveFormat));
-            cboArchiveFormat.SelectionChangeCommitted += CboArchiveFormat_SelectionChangeCommitted;
-        }
-
-        void CboArchiveFormat_SelectionChangeCommitted(object sender, EventArgs e)
-        {
-            var format = (ArchiveFormat)cboArchiveFormat.SelectedItem;
-            if (Enum.IsDefined(typeof(ArchiveFormat), format))
-            {
-                InitCompressionLevel(format);
-                bool is7zipOrZip = format == ArchiveFormat.zip || format == ArchiveFormat.p7z;
-                if (is7zipOrZip)
-                {
-                    InitEncryptionMethod(format);
-                    gbEncryption.Enabled = true;
-                }
-                else
-                {
-                    gbEncryption.Enabled = false;
-                }
-                string name = txtFileName.Text;
-                if (format == ArchiveFormat.p7z)
-                {
-                    name = Path.ChangeExtension(name, ".7z");
-                }
-                else
-                {
-                    name = Path.ChangeExtension(name, "." + format.ToString());
-                }
-
-                txtFileName.Text = name;
+                MessageBox.Show($"압축 작업을 시작하는 중 오류가 발생했습니다: {ex.Message}", 
+                              "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                progressBar1.Visible = false;
+                lblStatus.Visible = false;
+                timerProgress.Stop();
             }
         }
 
-        void InitCompressionLevel(ArchiveFormat format)
+        #endregion
+
+        #region UI Initialization Methods
+
+        private void InitCompressionLevelComboBox()
         {
             cboCompressionLevel.Items.Clear();
-            ComboBoxItem item = null;
-            if (format == ArchiveFormat.p7z || format == ArchiveFormat.zip)
-            {
-                ComboBoxItem[] arrItems = new ComboBoxItem[6];
-
-                #region Add items
-                item = new ComboBoxItem()
-                {
-                    Text = CompressionLevel.Fast.ToString(),
-                    Value = CompressionLevel.Fast
-                };
-                arrItems[0] = item;
-
-                item = new ComboBoxItem()
-                {
-                    Text = CompressionLevel.Fastest.ToString(),
-                    Value = CompressionLevel.Fastest
-                };
-                arrItems[1] = item;
-
-                item = new ComboBoxItem()
-                {
-                    Text = CompressionLevel.Maximum.ToString(),
-                    Value = CompressionLevel.Maximum
-                };
-                arrItems[2] = item;
-
-                item = new ComboBoxItem()
-                {
-                    Text = CompressionLevel.Normal.ToString(),
-                    Value = CompressionLevel.Normal
-                };
-                arrItems[3] = item;
-
-                item = new ComboBoxItem()
-                {
-                    Text = CompressionLevel.Store.ToString(),
-                    Value = CompressionLevel.Store
-                };
-                arrItems[4] = item;
-
-                item = new ComboBoxItem()
-                {
-                    Text = CompressionLevel.Ultra.ToString(),
-                    Value = CompressionLevel.Ultra
-                };
-                arrItems[5] = item;
-                #endregion Add items
-
-                cboCompressionLevel.BeginUpdate();
-                cboCompressionLevel.Items.AddRange(arrItems);
-                cboCompressionLevel.SelectedIndex = 3;
-                cboCompressionLevel.EndUpdate();
-            }
-            else
-            {
-                item = new ComboBoxItem()
-                {
-                    Text = CompressionLevel.Store.ToString(),
-                    Value = CompressionLevel.Store
-                };
-                cboCompressionLevel.Items.Add(item);
-                cboCompressionLevel.SelectedIndex = 0;
-            }
-        }
-
-        void InitUpdateMode()
-        {
-            ComboBoxItem[] cboItems = new ComboBoxItem[4];
-
+            
+            ComboBoxItem[] arrItems = new ComboBoxItem[3];
+            
+            // 압축 레벨 옵션 추가
             ComboBoxItem item = new ComboBoxItem()
             {
-                Text = "Add and replace files",
-                Value = UpdateMode.AddAndReplace
+                Text = "저압축 (빠름)",
+                Value = (int)CompressionLevel.Fastest
             };
-            cboItems[0] = item;
-
+            arrItems[0] = item;
+            
             item = new ComboBoxItem()
             {
-                Text = "Freshen Existing files",
-                Value = UpdateMode.FreshenExisting
+                Text = "보통",
+                Value = (int)CompressionLevel.Optimal
             };
-            cboItems[1] = item;
-
+            arrItems[1] = item;
+            
             item = new ComboBoxItem()
             {
-                Text = "Synchronize files",
-                Value = UpdateMode.Synchronize
+                Text = "최대 압축 (느림)",
+                Value = (int)CompressionLevel.SmallestSize
             };
-            cboItems[2] = item;
-
-            item = new ComboBoxItem()
-            {
-                Text = "Update and add files",
-                Value = UpdateMode.UpdateAndAdd
-            };
-            cboItems[3] = item;
-
-            cboUpdateMode.BeginUpdate();
-            cboUpdateMode.Items.AddRange(cboItems);
-            cboUpdateMode.EndUpdate();
-            cboUpdateMode.SelectedIndex = 0;
+            arrItems[2] = item;
+            
+            cboCompressionLevel.Items.AddRange(arrItems);
+            cboCompressionLevel.SelectedIndex = 1; // 기본값: 보통
         }
 
-        void InitPathMode()
+        private void InitArchiveFormatComboBox()
         {
+            cboArchiveFormat.Items.Clear();
+            
+            // ZIP 형식만 지원
+            ComboBoxItem item = new ComboBoxItem()
+            {
+                Text = "ZIP",
+                Value = 0
+            };
+            cboArchiveFormat.Items.Add(item);
+            cboArchiveFormat.SelectedIndex = 0;
+            cboArchiveFormat.Enabled = false; // 현재는 ZIP만 지원하므로 비활성화
+        }
+
+        private void InitUpdateModeComboBox()
+        {
+            cboUpdateMode.Items.Clear();
+            
             ComboBoxItem[] cboItems = new ComboBoxItem[3];
-
+            
             ComboBoxItem item = new ComboBoxItem()
             {
-                Text = "Relative pathnames",
-                Value = PathMode.Relative
+                Text = "기존 파일에 추가",
+                Value = (int)UpdateMode.Add
             };
             cboItems[0] = item;
-
+            
             item = new ComboBoxItem()
             {
-                Text = "Full pathnames",
-                Value = PathMode.Full
+                Text = "기존 파일 업데이트",
+                Value = (int)UpdateMode.Update
             };
             cboItems[1] = item;
-
+            
             item = new ComboBoxItem()
             {
-                Text = "Absolute pathnames",
-                Value = PathMode.Absolute
+                Text = "아카이브 새로 생성",
+                Value = (int)UpdateMode.Fresh
             };
             cboItems[2] = item;
-
-            cboPathMode.BeginUpdate();
-            cboPathMode.Items.AddRange(cboItems);
-            cboPathMode.EndUpdate();
-            cboPathMode.SelectedIndex = 0;
+            
+            cboUpdateMode.Items.AddRange(cboItems);
+            cboUpdateMode.SelectedIndex = 0; // 기본값: 추가
         }
 
-        void InitEncryptionMethod(ArchiveFormat format)
-        {
-            cboEncryptMethod.Items.Clear();
-            ComboBoxItem item = null;
-            switch (format)
-            {
-                case ArchiveFormat.zip:
-                    item = new ComboBoxItem()
-                    {
-                        Text = EncryptionMethod.ZipCrypto.ToString(),
-                        Value = EncryptionMethod.ZipCrypto
-                    };
-                    cboEncryptMethod.Items.Add(item);
-                    item = new ComboBoxItem()
-                    {
-                        Text = EncryptionMethod.AES256.ToString(),
-                        Value = EncryptionMethod.AES256
-                    };
-                    cboEncryptMethod.Items.Add(item);
-                    break;
-                case ArchiveFormat.p7z:
-                    item = new ComboBoxItem()
-                    {
-                        Text = EncryptionMethod.AES256.ToString(),
-                        Value = EncryptionMethod.AES256
-                    };
-                    cboEncryptMethod.Items.Add(item);
-                    break;
-            }
-            cboEncryptMethod.SelectedIndex = 0;
-        }
+        #endregion
 
-        #endregion Init combobox contents
-
-        public static void FatalError(IWin32Window handle, string text, MessageBoxIcon icon = MessageBoxIcon.Error)
+        // 타이머 이벤트 핸들러
+        private void timerProgress_Tick(object sender, EventArgs e)
         {
-            string caption = "Total Commander";
-            MessageBox.Show(handle, text, caption, MessageBoxButtons.OK, icon);
+            // 실제 진행 상황은 백그라운드 워커에서 업데이트됨
         }
     }
-
-    #region Enum Structures
-    enum ArchiveFormat { zip = 0, p7z, wim, tar }
-
-    enum CompressionLevel { Normal = 5, Fastest = 1, Fast = 3, Store = 0, Maximum = 7, Ultra = 9 }
-
-    enum UpdateMode { AddAndReplace = 0, UpdateAndAdd, FreshenExisting, Synchronize }
-
-    enum PathMode { Relative = 0, Full, Absolute }
-
-    enum EncryptionMethod { ZipCrypto = 0, AES256 }
-    #endregion Enum Structures
 }
