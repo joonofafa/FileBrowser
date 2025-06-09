@@ -405,6 +405,56 @@ namespace TotalCommander
                 return false; // Pass event to other control
             }
             
+            // F2 key event handling
+            if (keyData == Keys.F2)
+            {
+                // Special handling for F2 key (Rename)
+                KeyAction action = keySettings.GetActionForKey(Keys.F2);
+                
+                if (action == KeyAction.UserExecute)
+                {
+                    try
+                    {
+                        UserExecuteOption option = keySettings.GetUserExecuteOptionForKey(Keys.F2);
+                        if (option != null)
+                        {
+                            // Get selected item path
+                            string leftExplorerSelectedPath = GetSelectedPathFromExplorer(shellBrowser_Left);
+                            string rightExplorerSelectedPath = GetSelectedPathFromExplorer(shellBrowser_Right);
+                            string focusingExplorerSelectedPath = GetSelectedPathFromExplorer(m_PreviousFocus);
+
+                            Logger.Debug($"ProcessCmdKey F2: Executing with Left={leftExplorerSelectedPath}, Right={rightExplorerSelectedPath}, Focus={focusingExplorerSelectedPath}");
+                            
+                            // Directly execute option
+                            option.Execute(leftExplorerSelectedPath, rightExplorerSelectedPath, focusingExplorerSelectedPath);
+                            return true; // Event processing completed
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        CustomDialogHelper.ShowMessageBox(this, $"Error executing user execute option: {ex.Message}", 
+                                       "Execution Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                    return true;
+                }
+                else if (action == KeyAction.Rename)
+                {
+                    // Handle rename action - call RenameSelectedItem on active explorer
+                    if (m_PreviousFocus != null)
+                    {
+                        Logger.Debug("ProcessCmdKey F2: Executing Rename action");
+                        m_PreviousFocus.RenameSelectedItem();
+                        return true; // Event processing completed
+                    }
+                }
+                else if (action != KeyAction.None)
+                {
+                    // Handle other F2 key actions
+                    ExecuteKeyAction(Keys.F2);
+                    return true; // Event processing completed
+                }
+            }
+            
             // F5 key event handling
             if (keyData == Keys.F5)
             {

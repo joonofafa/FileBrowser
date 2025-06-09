@@ -1960,21 +1960,158 @@ namespace TotalCommander.GUI
         /// </summary>
         public void RenameSelectedItem()
         {
-            if (browser.SelectedIndices.Count != 1)
+            Logger.Debug("ShellBrowser.RenameSelectedItem: Starting rename operation");
+            
+            try
             {
-                MessageBox.Show(StringResources.GetString("RenameMultipleNotAllowed"), 
-                               StringResources.GetString("RenameTitle"), 
-                               MessageBoxButtons.OK, 
-                               MessageBoxIcon.Information);
-                return;
+                // 1. Check if a single item is selected
+                if (browser.SelectedIndices.Count != 1)
+                {
+                    Logger.Debug("ShellBrowser.RenameSelectedItem: Multiple items selected or no items selected");
+                    MessageBox.Show(StringResources.GetString("RenameMultipleNotAllowed"), 
+                                   StringResources.GetString("RenameTitle"), 
+                                   MessageBoxButtons.OK, 
+                                   MessageBoxIcon.Information);
+                    return;
+                }
+
+                // 2. Check if the selected index is valid
+                int selectedIdx = browser.SelectedIndices[0];
+                if (selectedIdx < 0 || selectedIdx >= m_ShellItemInfo.Count)
+                {
+                    Logger.Debug($"ShellBrowser.RenameSelectedItem: Invalid selected index {selectedIdx}");
+                    return;
+                }
+                
+                // 3. Check if the item is editable (not read-only)
+                FileSystemInfo fileInfo = m_ShellItemInfo[selectedIdx];
+                if ((fileInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                {
+                    Logger.Debug("ShellBrowser.RenameSelectedItem: Selected item is read-only");
+                    MessageBox.Show(StringResources.GetString("PermissionDenied"), 
+                                   StringResources.GetString("RenameError"), 
+                                   MessageBoxButtons.OK, 
+                                   MessageBoxIcon.Error);
+                    return;
+                }
+                
+                // 4. For virtual mode, directly rename through file operations
+                // This avoids using SelectedItems collection which is not accessible in virtual mode
+                if (browser.VirtualMode)
+                {
+                    Logger.Debug("ShellBrowser.RenameSelectedItem: In VirtualMode, directly renaming file/directory");
+                    string oldName = Path.GetFileName(fileInfo.FullName);
+                    string newName = null;
+                    
+                    // Use simple InputBox style dialog
+                    using (Form inputDialog = new Form())
+                    {
+                        inputDialog.Text = StringResources.GetString("RenameTitle");
+                        inputDialog.ClientSize = new Size(300, 80);
+                        inputDialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                        inputDialog.StartPosition = FormStartPosition.CenterParent;
+                        inputDialog.MinimizeBox = false;
+                        inputDialog.MaximizeBox = false;
+                        
+                        Label label = new Label();
+                        label.Text = StringResources.GetString("FolderName");
+                        label.Location = new Point(10, 10);
+                        label.AutoSize = true;
+                        inputDialog.Controls.Add(label);
+                        
+                        TextBox textBox = new TextBox();
+                        textBox.Location = new Point(10, 30);
+                        textBox.Size = new Size(280, 23);
+                        textBox.Text = oldName;
+                        textBox.SelectAll();
+                        inputDialog.Controls.Add(textBox);
+                        
+                        Button buttonOk = new Button();
+                        buttonOk.Text = StringResources.GetString("OK");
+                        buttonOk.DialogResult = DialogResult.OK;
+                        buttonOk.Location = new Point(110, 55);
+                        inputDialog.Controls.Add(buttonOk);
+                        
+                        Button buttonCancel = new Button();
+                        buttonCancel.Text = StringResources.GetString("Cancel");
+                        buttonCancel.DialogResult = DialogResult.Cancel;
+                        buttonCancel.Location = new Point(210, 55);
+                        inputDialog.Controls.Add(buttonCancel);
+                        
+                        inputDialog.AcceptButton = buttonOk;
+                        inputDialog.CancelButton = buttonCancel;
+                        
+                        if (FormHelper.ShowDialogCentered(inputDialog, this.FindForm()) == DialogResult.OK)
+                        {
+                            newName = textBox.Text;
+                        }
+                    }
+                    
+                    // If user entered a new name
+                    if (!string.IsNullOrWhiteSpace(newName) && newName != oldName)
+                    {
+                        try
+                        {
+                            string targetPath = Path.Combine(Path.GetDirectoryName(fileInfo.FullName), newName);
+                            
+                            // Rename file or directory
+                            if (fileInfo is FileInfo)
+                            {
+                                File.Move(fileInfo.FullName, targetPath);
+                            }
+                            else if (fileInfo is DirectoryInfo)
+                            {
+                                Directory.Move(fileInfo.FullName, targetPath);
+                            }
+                            
+                            // Refresh and maintain selection
+                            RefreshListView();
+                            // Try to reselect item with the new name
+                            for (int i = 0; i < m_ShellItemInfo.Count; i++)
+                            {
+                                if (Path.GetFileName(m_ShellItemInfo[i].FullName).Equals(newName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    if (i < browser.Items.Count)
+                                    {
+                                        browser.Items[i].Selected = true;
+                                        browser.Items[i].Focused = true;
+                                        browser.EnsureVisible(i);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error(ex, "ShellBrowser.RenameSelectedItem: Error during rename operation");
+                            MessageBox.Show(StringResources.GetString("RenameFailed") + ex.Message,
+                                          StringResources.GetString("Error"),
+                                          MessageBoxButtons.OK,
+                                          MessageBoxIcon.Error);
+                        }
+                    }
+                    return;
+                }
+                
+                // 5. For standard mode, use LabelEdit functionality
+                Logger.Debug($"ShellBrowser.RenameSelectedItem: Setting LabelEdit=true for item at index {selectedIdx}");
+                browser.LabelEdit = true;
+                
+                // 6. Ensure item is visible
+                browser.EnsureVisible(selectedIdx);
+                
+                // 7. Set focus and start edit
+                browser.FocusedItem = browser.Items[selectedIdx];
+                browser.Items[selectedIdx].BeginEdit();
             }
-
-            int selectedIdx = browser.SelectedIndices[0];
-            if (selectedIdx < 0 || selectedIdx >= m_ShellItemInfo.Count)
-                return;
-
-            browser.LabelEdit = true;
-            browser.SelectedItems[0].BeginEdit();
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "ShellBrowser.RenameSelectedItem: Exception occurred during rename operation");
+                MessageBox.Show(StringResources.GetString("RenameFailed") + ex.Message,
+                               StringResources.GetString("Error"),
+                               MessageBoxButtons.OK,
+                               MessageBoxIcon.Error);
+            }
         }
 
         /// <summary>
