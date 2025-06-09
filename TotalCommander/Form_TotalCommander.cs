@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 using TotalCommander.GUI;
@@ -27,6 +28,9 @@ namespace TotalCommander
         {
             InitializeComponent();
             isRightVisible = true;
+            
+            // 제목 표시줄에 빌드 일시 표시
+            UpdateTitleWithBuildDateTime();
             
             InitializeMenus();
             
@@ -143,8 +147,8 @@ namespace TotalCommander
         #region Bottom buttons
         private void Form_TotalCommander_KeyDown(object sender, KeyEventArgs e)
         {
-            // 디버깅 메시지 - 어떤 키가 눌렸는지 확인
-            //MessageBox.Show($"KeyDown 이벤트 발생: {e.KeyCode}", "키 입력 디버그", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // 키 이벤트 로깅 추가
+            Logger.Debug($"Form_TotalCommander_KeyDown: KeyCode={e.KeyCode}, KeyData={e.KeyData}, Handled={e.Handled}");
 
             // 기능 키(F2~F8)인 경우 설정된 액션 실행
             if (e.KeyCode >= Keys.F2 && e.KeyCode <= Keys.F8)
@@ -181,6 +185,30 @@ namespace TotalCommander
                     break;
                 case Keys.Control | Keys.Q:
                     this.Close();
+                    break;
+                // Ctrl+Shift+오른쪽 화살표: 왼쪽에서 오른쪽으로 복사
+                case Keys.Control | Keys.Shift | Keys.Right:
+                    // Shell32 API를 사용한 복사
+                    CopyBetweenPanels(shellBrowser_Left, shellBrowser_Right);
+                    e.Handled = true;
+                    break;
+                // Ctrl+Shift+왼쪽 화살표: 오른쪽에서 왼쪽으로 복사
+                case Keys.Control | Keys.Shift | Keys.Left:
+                    // Shell32 API를 사용한 복사
+                    CopyBetweenPanels(shellBrowser_Right, shellBrowser_Left);
+                    e.Handled = true;
+                    break;
+                // Alt+D: 왼쪽 주소표시줄 포커스 (현재 선택된 패널에 따라)
+                case Keys.Alt | Keys.D:
+                    if (m_PreviousFocus == shellBrowser_Left)
+                    {
+                        shellBrowser_Left.FocusAddressBar();
+                    }
+                    else if (m_PreviousFocus == shellBrowser_Right)
+                    {
+                        shellBrowser_Right.FocusAddressBar();
+                    }
+                    e.Handled = true;
                     break;
                 // Tab 키는 더 이상 여기서 처리하지 않고 ProcessTabKey 메서드에서만 처리합니다.
             }
@@ -353,6 +381,16 @@ namespace TotalCommander
         // Tab 키를 더 확실하게 가로채기 위해 ProcessCmdKey 메서드도 오버라이드
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
+            // 키 이벤트 로깅 추가
+            Logger.Debug($"ProcessCmdKey: keyData={keyData}");
+            
+            // Space 키는 파일 브라우저에서 처리하도록 전달
+            if (keyData == Keys.Space)
+            {
+                Logger.Debug("ProcessCmdKey: Space 키 감지, 이벤트 전달");
+                return false; // 이벤트를 다른 컨트롤로 전달
+            }
+            
             // F5 키 이벤트 처리
             if (keyData == Keys.F5)
             {
@@ -912,6 +950,238 @@ namespace TotalCommander
         {
             // 분할 위치가 변경되면 설정 저장
             SaveColumnSettings();
+        }
+
+        private void UpdateTitleWithBuildDateTime()
+        {
+            try
+            {
+                // 어셈블리 파일 경로 가져오기
+                string assemblyPath = Assembly.GetExecutingAssembly().Location;
+                DateTime buildDateTime = File.GetLastWriteTime(assemblyPath);
+                
+                // 버전 정보 가져오기
+                Version version = Assembly.GetExecutingAssembly().GetName().Version;
+                
+                // 제목 표시줄에 빌드 일시와 버전 표시
+                this.Text = $"Total Commander - v{version} (빌드: {buildDateTime:yyyy-MM-dd HH:mm:ss})";
+                
+                // 로그에도 기록
+                Logger.Info($"어플리케이션 버전: {version}, 빌드 일시: {buildDateTime:yyyy-MM-dd HH:mm:ss}");
+            }
+            catch (Exception ex)
+            {
+                // 오류 발생 시 기본 제목 표시
+                this.Text = "Total Commander";
+                Logger.Error(ex, "빌드 일시 가져오기 실패");
+            }
+        }
+
+        /// <summary>
+        /// 한 패널에서 다른 패널로 선택된 파일/폴더 복사 (Windows Shell32 API 사용)
+        /// </summary>
+        /// <param name="source">소스 ShellBrowser (선택된 항목이 있는 패널)</param>
+        /// <param name="destination">대상 ShellBrowser (복사할 대상 경로가 있는 패널)</param>
+        private void CopyBetweenPanels(ShellBrowser source, ShellBrowser destination)
+        {
+            try
+            {
+                // 로그 기록
+                Logger.Info($"Shell32 API를 사용한 패널 간 복사 시작: {source.CurrentPath} -> {destination.CurrentPath}");
+                
+                // 선택된 항목이 없으면 종료
+                if (source.FileExplorer.SelectedIndices.Count == 0)
+                {
+                    Logger.Info("선택된 항목이 없습니다.");
+                    return;
+                }
+                
+                // 대상 경로가 유효한지 확인
+                if (string.IsNullOrEmpty(destination.CurrentPath) || !Directory.Exists(destination.CurrentPath))
+                {
+                    Logger.Error($"대상 경로가 유효하지 않습니다: {destination.CurrentPath}");
+                    MessageBox.Show("대상 경로가 유효하지 않습니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                
+                // 선택된 항목의 경로 가져오기
+                List<string> selectedPaths = new List<string>();
+                foreach (int index in source.FileExplorer.SelectedIndices)
+                {
+                    if (index < source.m_ShellItemInfo.Count)
+                    {
+                        FileSystemInfo item = source.m_ShellItemInfo[index];
+                        selectedPaths.Add(item.FullName);
+                    }
+                }
+                
+                if (selectedPaths.Count == 0)
+                {
+                    Logger.Info("선택된 항목이 없습니다.");
+                    return;
+                }
+                
+                // 복사 확인 대화상자 표시
+                using (var confirmDialog = new GUI.FormCopyConfirm(selectedPaths.ToArray(), destination.CurrentPath))
+                {
+                    if (confirmDialog.ShowDialog(this) != DialogResult.OK)
+                    {
+                        Logger.Info("사용자가 복사를 취소했습니다.");
+                        return;
+                    }
+                }
+                
+                // 복사 작업을 위한 ShellFileOperation 설정
+                ShellFileOperation fileOperation = new ShellFileOperation();
+                fileOperation.SourceFiles = selectedPaths.ToArray();
+                fileOperation.DestinationFolder = destination.CurrentPath;
+                fileOperation.Operation = ShellFileOperation.FileOperations.FO_COPY;
+                
+                // 작업 옵션 설정 (진행 대화 상자 표시)
+                fileOperation.OperationFlags = 
+                    ShellFileOperation.ShellFileOperationFlags.FOF_ALLOWUNDO | 
+                    ShellFileOperation.ShellFileOperationFlags.FOF_NOCONFIRMMKDIR;
+                
+                // 작업 실행
+                bool success = fileOperation.DoOperation();
+                
+                if (success)
+                {
+                    // 복사 후 대상 패널 새로고침
+                    destination.RefreshAll();
+                    
+                    // 복사 완료 메시지
+                    string message = selectedPaths.Count == 1 
+                        ? "1개 항목이 복사되었습니다." 
+                        : $"{selectedPaths.Count}개 항목이 복사되었습니다.";
+                    destination.SetStatusMessage(message);
+                    
+                    Logger.Info("Shell32 API를 사용한 패널 간 복사 완료");
+                }
+                else
+                {
+                    Logger.Error("Shell32 API를 사용한 패널 간 복사 실패");
+                    MessageBox.Show("복사 작업이 완료되지 않았습니다.", "복사 실패", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Shell32 API를 사용한 패널 간 복사 중 오류 발생: {ex.Message}");
+                MessageBox.Show($"복사 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Windows Shell32 API를 사용하기 위한 클래스
+        /// </summary>
+        private class ShellFileOperation
+        {
+            [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+            private static extern int SHFileOperation([System.Runtime.InteropServices.In, System.Runtime.InteropServices.Out] ref SHFILEOPSTRUCT lpFileOp);
+
+            [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+            private struct SHFILEOPSTRUCT
+            {
+                public IntPtr hwnd;
+                public FileOperations wFunc;
+                [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
+                public string pFrom;
+                [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
+                public string pTo;
+                public ShellFileOperationFlags fFlags;
+                [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+                public bool fAnyOperationsAborted;
+                public IntPtr hNameMappings;
+                [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
+                public string lpszProgressTitle;
+            }
+
+            public enum FileOperations : uint
+            {
+                FO_MOVE = 0x0001,
+                FO_COPY = 0x0002,
+                FO_DELETE = 0x0003,
+                FO_RENAME = 0x0004
+            }
+
+            [System.Flags]
+            public enum ShellFileOperationFlags : ushort
+            {
+                FOF_MULTIDESTFILES = 0x0001,
+                FOF_CONFIRMMOUSE = 0x0002,
+                FOF_SILENT = 0x0004,
+                FOF_RENAMEONCOLLISION = 0x0008,
+                FOF_NOCONFIRMATION = 0x0010,
+                FOF_WANTMAPPINGHANDLE = 0x0020,
+                FOF_ALLOWUNDO = 0x0040,
+                FOF_FILESONLY = 0x0080,
+                FOF_SIMPLEPROGRESS = 0x0100,
+                FOF_NOCONFIRMMKDIR = 0x0200,
+                FOF_NOERRORUI = 0x0400,
+                FOF_NOCOPYSECURITYATTRIBS = 0x0800,
+                FOF_NORECURSION = 0x1000,
+                FOF_NO_CONNECTED_ELEMENTS = 0x2000,
+                FOF_WANTNUKEWARNING = 0x4000,
+                FOF_NORECURSEREPARSE = 0x8000
+            }
+
+            // 소스 파일 목록
+            public string[] SourceFiles { get; set; }
+            
+            // 대상 폴더
+            public string DestinationFolder { get; set; }
+            
+            // 작업 유형 (복사, 이동 등)
+            public FileOperations Operation { get; set; }
+            
+            // 작업 옵션 플래그
+            public ShellFileOperationFlags OperationFlags { get; set; }
+            
+            /// <summary>
+            /// 파일 작업 실행
+            /// </summary>
+            /// <returns>성공 여부</returns>
+            public bool DoOperation()
+            {
+                if (SourceFiles == null || SourceFiles.Length == 0 || string.IsNullOrEmpty(DestinationFolder))
+                {
+                    return false;
+                }
+                
+                try
+                {
+                    SHFILEOPSTRUCT fileOp = new SHFILEOPSTRUCT();
+                    fileOp.hwnd = IntPtr.Zero;
+                    fileOp.wFunc = Operation;
+                    
+                    // 소스 파일 목록을 쌍반점(null)으로 구분된 단일 문자열로 변환
+                    StringBuilder sourceBuilder = new StringBuilder();
+                    foreach (string file in SourceFiles)
+                    {
+                        sourceBuilder.Append(file);
+                        sourceBuilder.Append('\0'); // null 문자로 파일 구분
+                    }
+                    sourceBuilder.Append('\0'); // 마지막에 추가 null 문자
+                    fileOp.pFrom = sourceBuilder.ToString();
+                    
+                    // 대상 폴더
+                    fileOp.pTo = DestinationFolder + '\0' + '\0'; // 폴더에도 이중 null 문자 필요
+                    
+                    // 작업 옵션
+                    fileOp.fFlags = OperationFlags;
+                    
+                    // 작업 실행
+                    int result = SHFileOperation(ref fileOp);
+                    
+                    // 결과 확인 (0은 성공)
+                    return result == 0 && !fileOp.fAnyOperationsAborted;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"Shell32 API 오류: {ex.Message}");
+                    return false;
+                }
+            }
         }
     }
 }

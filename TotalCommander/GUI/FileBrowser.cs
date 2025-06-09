@@ -17,15 +17,44 @@ namespace TotalCommander.GUI
 
         protected override bool IsInputKey(Keys keyData)
         {
-            switch (keyData)
+            // 키 이벤트 로깅 추가
+            Logger.Debug($"FileBrowser.IsInputKey 호출: keyData={keyData}");
+            
+            // 명시적으로 스페이스 키 처리
+            if (keyData == Keys.Space)
             {
-                case Keys.Right:
-                case Keys.Left:
-                case Keys.Up:
-                case Keys.Down:
-                    return true;
+                Logger.Debug("FileBrowser.IsInputKey: Space 키 직접 처리");
+                return true;
             }
+            
+            // 나머지는 기본 처리
             return base.IsInputKey(keyData);
+        }
+        
+        // 메시지 전처리를 위한 메서드 오버라이드
+        public override bool PreProcessMessage(ref Message msg)
+        {
+            const int WM_KEYDOWN = 0x0100;
+            const int VK_SPACE = 0x20;
+            
+            // 스페이스 키에 대한 WM_KEYDOWN 메시지 확인
+            if (msg.Msg == WM_KEYDOWN && msg.WParam.ToInt32() == VK_SPACE)
+            {
+                Logger.Debug("FileBrowser.PreProcessMessage: Space 키 메시지 감지");
+                
+                // 키 다운 이벤트를 수동으로 발생
+                var e = new KeyEventArgs(Keys.Space);
+                this.OnKeyDown(e);
+                
+                // 이벤트가 처리되었으면 true 반환
+                if (e.Handled)
+                {
+                    Logger.Debug("FileBrowser.PreProcessMessage: Space 키 이벤트 처리 완료");
+                    return true;
+                }
+            }
+            
+            return base.PreProcessMessage(ref msg);
         }
 
         #region Cannot use ListViewItemSorter in virtual mode
@@ -55,18 +84,111 @@ namespace TotalCommander.GUI
         //}
         #endregion
 
+        // 항목을 선택하는 메서드
+        private void SelectItem(int itemIndex)
+        {
+            Logger.Debug($"FileBrowser.SelectItem: 인덱스={itemIndex}");
+            
+            if (itemIndex < 0 || itemIndex >= this.Items.Count)
+            {
+                Logger.Debug("FileBrowser.SelectItem: 유효하지 않은 인덱스");
+                return;
+            }
+            
+            // BeginUpdate로 UI 갱신 일시 중지
+            this.BeginUpdate();
+            
+            try
+            {
+                // 항상 선택 상태로 설정
+                if (!this.SelectedIndices.Contains(itemIndex))
+                {
+                    Logger.Debug($"FileBrowser.SelectItem: 항목 선택 {itemIndex}");
+                    this.SelectedIndices.Add(itemIndex);
+                    this.Items[itemIndex].Selected = true;
+                }
+                
+                // 포커스 유지
+                this.FocusedItem = this.Items[itemIndex];
+                
+                // 선택 변경 이벤트 수동 발생
+                this.OnSelectedIndexChanged(EventArgs.Empty);
+            }
+            finally
+            {
+                // EndUpdate로 UI 갱신 재개
+                this.EndUpdate();
+                
+                // 변경 내용 화면에 강제 반영
+                this.Invalidate(true);
+                this.Update();
+                Application.DoEvents(); // UI 이벤트 처리 강제
+            }
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
+            // 키 이벤트 로깅 추가
+            Logger.Debug($"FileBrowser.OnKeyDown: KeyCode={e.KeyCode}, KeyData={e.KeyData}, Handled={e.Handled}");
+            
             switch (e.KeyData)
             {
                 case Keys.Control | Keys.A:
+                    Logger.Debug("FileBrowser: Ctrl+A 처리 - 모두 선택");
                     for (int i = 0; i < this.VirtualListSize; i++)
                     {
                         this.SelectedIndices.Add(i);
                     }
+                    this.Refresh();
+                    e.Handled = true;
+                    break;
+                case Keys.Space:
+                    Logger.Debug("FileBrowser: Space 키 처리 시작");
+                    
+                    // 현재 포커스된 항목이 있으면 처리
+                    if (this.FocusedItem != null)
+                    {
+                        int focusedIndex = this.FocusedItem.Index;
+                        Logger.Debug($"FileBrowser: 포커스된 항목 인덱스={focusedIndex}");
+                        
+                        // 1. 현재 항목 선택
+                        SelectItem(focusedIndex);
+                        
+                        // 2. 다음 항목으로 이동 (Down 키 효과)
+                        if (focusedIndex < this.Items.Count - 1)
+                        {
+                            int nextIndex = focusedIndex + 1;
+                            this.FocusedItem = this.Items[nextIndex];
+                            this.EnsureVisible(nextIndex);
+                            Logger.Debug($"FileBrowser: 다음 항목으로 이동 {nextIndex}");
+                        }
+                        
+                        e.Handled = true;
+                        Logger.Debug("FileBrowser: Space 키 처리 완료, e.Handled=true");
+                    }
+                    else if (this.Items.Count > 0 && this.SelectedIndices.Count == 0)
+                    {
+                        // 선택된 항목이 없으면 첫 번째 항목 선택
+                        Logger.Debug("FileBrowser: 첫 번째 항목 선택");
+                        SelectItem(0);
+                        
+                        // 두 번째 항목으로 이동 (있는 경우)
+                        if (this.Items.Count > 1)
+                        {
+                            this.FocusedItem = this.Items[1];
+                            this.EnsureVisible(1);
+                        }
+                        
+                        e.Handled = true;
+                    }
                     break;
             }
-            base.OnKeyDown(e);
+            
+            // 베이스 클래스 메서드 호출하기 전에 이벤트가 처리되었는지 확인
+            if (!e.Handled)
+            {
+                base.OnKeyDown(e);
+            }
         }
         
         // 컬럼 너비 변경 감지를 위한 메서드 오버라이드

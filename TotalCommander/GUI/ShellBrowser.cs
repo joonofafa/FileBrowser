@@ -8,6 +8,8 @@ using System.Windows.Forms;
 using System.IO;
 using System.Diagnostics;
 using Microsoft.VisualBasic.FileIO;
+using System.Text;
+using System.Runtime.InteropServices;
 
 namespace TotalCommander.GUI
 {
@@ -59,6 +61,22 @@ namespace TotalCommander.GUI
         public ListView FileExplorer => browser;
         #endregion
 
+        /// <summary>
+        /// 상태 표시줄에 메시지를 표시합니다.
+        /// </summary>
+        /// <param name="message">표시할 메시지</param>
+        public void SetStatusMessage(string message)
+        {
+            // 상태 메시지 설정
+            if (lblBotStatus != null)
+            {
+                lblBotStatus.Text = message;
+                
+                // StatusChanged 이벤트 발생
+                StatusChanged?.Invoke(this, new StatusChangedEventArgs(message));
+            }
+        }
+
         public ShellBrowser()
         {
             InitializeComponent();
@@ -78,6 +96,9 @@ namespace TotalCommander.GUI
             InitDisksBrowser();
             InitTxtPath();
             InitPassingFocus();
+            
+            // 레이아웃 조정
+            AdjustLayout();
             
             // 초기화 후 첫 번째 항목 선택
             SelectFirstItem();
@@ -210,43 +231,71 @@ namespace TotalCommander.GUI
         #region Textbox presents Current Path
         private void InitTxtPath()
         {
-            txtPath.Visible = false; // 텍스트 경로 표시 영역 숨기기
-            lblTopStorageStatus.Visible = false; // 상단 저장소 상태 레이블 숨기기
-            disksBrowser.Visible = false; // 디스크 브라우저 숨기기
-            
-            // 모든 상단 컨트롤이 숨겨진 상태에서 splMainView가 전체 영역을 차지하도록 설정
-            splMainView.Location = new System.Drawing.Point(0, 0);
-            splMainView.Height = this.Height - lblBotStatus.Height;
-            
+            // 주소표시줄 초기화
+            txtPath.Visible = true; // 주소표시줄을 항상 표시
+            txtPath.Text = CurrentPath;
             txtPath.LostFocus += TxtPath_LostFocus;
             txtPath.KeyDown += TxtPath_KeyDown;
+            
+            // Tab 키로 접근되지 않도록 설정
+            txtPath.TabStop = false;
+        }
+
+        /// <summary>
+        /// 주소표시줄에 포커스를 설정합니다.
+        /// </summary>
+        public void FocusAddressBar()
+        {
+            txtPath.Text = CurrentPath;
+            txtPath.Focus();
+            txtPath.SelectAll();
         }
 
         void TxtPath_LostFocus(object sender, EventArgs e)
         {
-            bool isSame = txtPath.Text.Equals(CurrentPath);
-            if (!isSame)
-                txtPath.Text = CurrentPath;
+            // 포커스 잃을 때 현재 경로로 업데이트
+            txtPath.Text = CurrentPath;
         }
 
         void TxtPath_KeyDown(object sender, KeyEventArgs e)
         {
-            Keys ourKey = e.KeyData;
-            switch (e.KeyData)
+            switch (e.KeyCode)
             {
                 case Keys.Enter:
-                    txtPath.Text = txtPath.Text.Trim();
-                    if (txtPath.Text.Contains(Path.DirectorySeparatorChar) && ProcessFolder(txtPath.Text))
-                        m_History.Add(txtPath.Text);
-                    else
-                        txtPath.Text = CurrentPath;
-                    ComboBoxItem cbi = (ComboBoxItem)disksBrowser.SelectedItem;
-                    string path = cbi.Text;
-                    RefreshDisksBrowser(CurrentPath, path);
+                    string path = txtPath.Text.Trim();
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        if (Directory.Exists(path))
+                        {
+                            ProcessFileOrFolderPath(path);
+                            m_History.Add(path);
+                        }
+                        else if (File.Exists(path))
+                        {
+                            try
+                            {
+                                System.Diagnostics.Process.Start(path);
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show("파일을 열 수 없습니다: " + ex.Message, "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        }
+                        else
+                        {
+                            MessageBox.Show("경로를 찾을 수 없습니다: " + path, "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+                    // 파일 브라우저에 포커스 설정
+                    FocusFileBrowser();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
                     break;
                 case Keys.Escape:
-                    txtPath.Text = CurrentPath;
-                    txtPath.SelectionStart = CurrentPath.Length;
+                    // ESC 키를 누르면 파일 브라우저로 포커스 이동
+                    FocusFileBrowser();
+                    e.Handled = true;
+                    e.SuppressKeyPress = true;
                     break;
             }
         }
@@ -619,6 +668,9 @@ namespace TotalCommander.GUI
 
         void Browser_KeyDown(object sender, KeyEventArgs e)
         {
+            // 키 이벤트 로깅 추가
+            Logger.Debug($"ShellBrowser.Browser_KeyDown: KeyCode={e.KeyCode}, KeyData={e.KeyData}, Handled={e.Handled}");
+            
             switch (e.KeyData)
             {
                 case Keys.Delete:
@@ -671,13 +723,7 @@ namespace TotalCommander.GUI
                 case Keys.Control | Keys.Shift | Keys.N:
                     CreateNewFolder();
                     break;
-                case Keys.Space:
-                    if (browser.SelectedIndices.Count == 0)
-                    {
-                        browser.SelectedIndices.Add(0);
-                        browser.EnsureVisible(0);
-                    }
-                    break;
+                // Space 키는 FileBrowser 클래스에서 직접 처리합니다.
             }
         }
 
@@ -762,7 +808,7 @@ namespace TotalCommander.GUI
                 {
                     int files = m_ShellItemInfo.Count(f => f is FileInfo);
                     int folders = m_ShellItemInfo.Count(f => f is DirectoryInfo);
-                    string statusText = $"{files} file(s), {folders} dir(s)";
+                    string statusText = $"{files} File(s), {folders} Dir(s)";
                     StatusChanged?.Invoke(this, new StatusChangedEventArgs(statusText));
                 }
                 catch (Exception)
@@ -868,27 +914,6 @@ namespace TotalCommander.GUI
             if (browser.SelectedIndices.Count == 0)
                 return;
 
-            string message = string.Empty;
-            string caption = "Confirm Delete";
-
-            int selectedCount = browser.SelectedIndices.Count;
-
-            if (recycle == RecycleOption.SendToRecycleBin)
-            {
-                message = string.Format("Are you sure you want to move {0} item(s) to the Recycle Bin?", selectedCount);
-            }
-            else // DeletePermanently
-            {
-                message = string.Format("Are you sure you want to permanently delete {0} item(s)?", selectedCount);
-            }
-
-            DialogResult result = MessageBox.Show(message, caption, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-            if (result == DialogResult.No)
-            {
-                return; // 사용자가 '아니오'를 선택하면 삭제하지 않음
-            }
-
             List<FileSystemInfo> itemsToDelete = new List<FileSystemInfo>();
             foreach (int selectedIndex in browser.SelectedIndices)
             {
@@ -903,39 +928,174 @@ namespace TotalCommander.GUI
                 return;
             }
 
-            List<Task> taskList = new List<Task>();
-            foreach (FileSystemInfo itemInfo in itemsToDelete) // FileSystemInfo 객체를 사용
+            try
             {
-                string fileName = itemInfo.FullName; // FileSystemInfo에서 FullName 사용
-                DeleteFileDel deleteFunc = null;
-                if (File.Exists(fileName))
-                    deleteFunc = FileSystem.DeleteFile;
-                else if (Directory.Exists(fileName))
-                    deleteFunc = FileSystem.DeleteDirectory;
-
-                if (deleteFunc != null)
+                // 강제 삭제(영구 삭제)와 일반 삭제(휴지통으로 이동) 구분 처리
+                if (recycle == RecycleOption.DeletePermanently)
                 {
-                    Task task = Task.Run(() => deleteFunc(fileName, UIOption.AllDialogs, recycle, UICancelOption.ThrowException));
-                    taskList.Add(task);
+                    // 강제 삭제일 경우 Shell32 API 사용하여 한 번에 모든 파일 삭제
+                    DeleteFilesUsingShellAPI(itemsToDelete, recycle == RecycleOption.SendToRecycleBin);
+                }
+                else
+                {
+                    // 일반 삭제일 경우 사용자 정의 확인 대화 상자 표시
+                    string confirmMessage = itemsToDelete.Count == 1
+                        ? $"'{itemsToDelete[0].Name}' 파일을 삭제하시겠습니까?"
+                        : $"{itemsToDelete.Count}개의 항목을 삭제하시겠습니까?";
+                    
+                    DialogResult result = MessageBox.Show(
+                        confirmMessage,
+                        "삭제 확인",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question,
+                        MessageBoxDefaultButton.Button2);
+                    
+                    if (result != DialogResult.Yes)
+                    {
+                        return;
+                    }
+
+                    // 항상 확인 대화 상자를 표시하기 위해 UIOption.AllDialogs 사용
+                    UIOption uiOption = UIOption.AllDialogs;
+                    UICancelOption cancelOption = UICancelOption.ThrowException;
+
+                    List<Task> taskList = new List<Task>();
+                    foreach (FileSystemInfo itemInfo in itemsToDelete)
+                    {
+                        string fileName = itemInfo.FullName;
+                        DeleteFileDel deleteFunc = null;
+                        if (File.Exists(fileName))
+                            deleteFunc = FileSystem.DeleteFile;
+                        else if (Directory.Exists(fileName))
+                            deleteFunc = FileSystem.DeleteDirectory;
+
+                        if (deleteFunc != null)
+                        {
+                            // UIOption.AllDialogs와 UICancelOption.ThrowException 사용
+                            Task task = Task.Run(() => deleteFunc(fileName, uiOption, recycle, cancelOption));
+                            taskList.Add(task);
+                        }
+                    }
+
+                    foreach (Task currentTask in taskList)
+                    {
+                        try
+                        {
+                            await currentTask;
+                        }
+                        catch (OperationCanceledException) { }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(ex.StackTrace);
+                        }
+                    }
                 }
             }
-
-            foreach (Task currentTask in taskList)
+            finally
             {
-                try
-                {
-                    await currentTask;
-                }
-                catch (OperationCanceledException) { }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.StackTrace);
-                }
-                finally
-                {
-                    RefreshListView();
-                }
+                // 작업 완료 후 목록 새로고침
+                RefreshListView();
             }
+        }
+
+        /// <summary>
+        /// Shell32 API를 사용하여 여러 파일을 한 번에 삭제
+        /// </summary>
+        private void DeleteFilesUsingShellAPI(List<FileSystemInfo> items, bool sendToRecycleBin)
+        {
+            try
+            {
+                // 삭제할 파일 경로 목록 생성
+                string[] filePaths = items.Select(item => item.FullName).ToArray();
+
+                // SHFileOperation 구조체 설정
+                ShellFileOperationStruct fileOp = new ShellFileOperationStruct();
+                fileOp.hwnd = this.Handle;
+                fileOp.wFunc = FileOperations.FO_DELETE;
+                
+                // 소스 파일 목록을 쌍반점(null)으로 구분된 단일 문자열로 변환
+                StringBuilder sourceBuilder = new StringBuilder();
+                foreach (string file in filePaths)
+                {
+                    sourceBuilder.Append(file);
+                    sourceBuilder.Append('\0'); // null 문자로 파일 구분
+                }
+                sourceBuilder.Append('\0'); // 마지막에 추가 null 문자
+                fileOp.pFrom = sourceBuilder.ToString();
+                fileOp.pTo = null;
+                
+                // 작업 옵션 설정
+                ShellFileOperationFlags flags = ShellFileOperationFlags.FOF_NOCONFIRMMKDIR | ShellFileOperationFlags.FOF_WANTMAPPINGHANDLE;
+
+                // 휴지통으로 이동 여부에 따라 플래그 설정
+                if (sendToRecycleBin)
+                {
+                    flags |= ShellFileOperationFlags.FOF_ALLOWUNDO;
+                }
+                else
+                {
+                    // 영구 삭제일 경우 경고 대화 상자 표시
+                    flags |= ShellFileOperationFlags.FOF_WANTNUKEWARNING;
+                }
+
+                fileOp.fFlags = flags;
+                
+                // 파일 작업 실행
+                SHFileOperation(ref fileOp);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"파일 삭제 중 오류 발생: {ex.Message}", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern int SHFileOperation([System.Runtime.InteropServices.In, System.Runtime.InteropServices.Out] ref ShellFileOperationStruct lpFileOp);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private struct ShellFileOperationStruct
+        {
+            public IntPtr hwnd;
+            public FileOperations wFunc;
+            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
+            public string pFrom;
+            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
+            public string pTo;
+            public ShellFileOperationFlags fFlags;
+            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+            public bool fAnyOperationsAborted;
+            public IntPtr hNameMappings;
+            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
+            public string lpszProgressTitle;
+        }
+
+        private enum FileOperations : uint
+        {
+            FO_MOVE = 0x0001,
+            FO_COPY = 0x0002,
+            FO_DELETE = 0x0003,
+            FO_RENAME = 0x0004
+        }
+
+        [System.Flags]
+        private enum ShellFileOperationFlags : ushort
+        {
+            FOF_MULTIDESTFILES = 0x0001,
+            FOF_CONFIRMMOUSE = 0x0002,
+            FOF_SILENT = 0x0004,
+            FOF_RENAMEONCOLLISION = 0x0008,
+            FOF_NOCONFIRMATION = 0x0010,
+            FOF_WANTMAPPINGHANDLE = 0x0020,
+            FOF_ALLOWUNDO = 0x0040,
+            FOF_FILESONLY = 0x0080,
+            FOF_SIMPLEPROGRESS = 0x0100,
+            FOF_NOCONFIRMMKDIR = 0x0200,
+            FOF_NOERRORUI = 0x0400,
+            FOF_NOCOPYSECURITYATTRIBS = 0x0800,
+            FOF_NORECURSION = 0x1000,
+            FOF_NO_CONNECTED_ELEMENTS = 0x2000,
+            FOF_WANTNUKEWARNING = 0x4000,
+            FOF_NORECURSEREPARSE = 0x8000
         }
 
         public void CutSelectedItems()
@@ -969,7 +1129,30 @@ namespace TotalCommander.GUI
 
         private void RefreshListView()
         {
-            ProcessFolder(CurrentPath);
+            // 화면 갱신 일시 중지
+            browser.BeginUpdate();
+            
+            try
+            {
+                // 캐시 초기화
+                m_ListItemCache = null;
+                m_FirstItem = 0;
+                
+                // 현재 경로 다시 처리 (목록 갱신)
+                ProcessFolder(CurrentPath);
+                
+                // 스크롤 위치 초기화
+                browser.TopItem = null;
+            }
+            finally
+            {
+                // 화면 갱신 재개
+                browser.EndUpdate();
+            }
+            
+            // 화면 강제 갱신
+            browser.Invalidate(true);
+            browser.Update();
             
             // 목록을 새로 고친 후 첫 번째 항목 선택
             SelectFirstItem();
@@ -1207,7 +1390,7 @@ namespace TotalCommander.GUI
             {
                 if (Navigate(path))
                 {
-                    txtPath.Text = CurrentPath;
+                    txtPath.Text = CurrentPath; // 주소표시줄 업데이트
                     UpdateFolderSummaryStatus();
                     return true;
                 }
@@ -1220,6 +1403,7 @@ namespace TotalCommander.GUI
             if (ProcessFolder(path))
             {
                 m_History.Add(path);
+                txtPath.Text = CurrentPath; // 주소표시줄 업데이트
             }
             else if (File.Exists(path))
             {
@@ -1246,19 +1430,58 @@ namespace TotalCommander.GUI
                 return false;
             }
             CurrentPath = path;
-            m_ListItemCache = null;
-            m_ShellItemInfo.Clear();
-            var subFiles = GetSubFiles(currentDir);
-            if (subDirs.Length > 0)
-                m_ShellItemInfo.AddRange(subDirs);
-            if (subFiles.Length > 0)
-                m_ShellItemInfo.AddRange(subFiles);
-            browser.VirtualListSize = 0;
-            browser.Invalidate();
-            browser.VirtualListSize = m_ShellItemInfo.Count;
+            // 주소표시줄 업데이트
+            txtPath.Text = CurrentPath;
             
-            // 첫 번째 항목 선택
-            SelectFirstItem();
+            // 화면 갱신 일시 중지
+            browser.BeginUpdate();
+            
+            try
+            {
+                // 캐시 및 데이터 초기화
+                m_ListItemCache = null;
+                m_FirstItem = 0;
+                m_ShellItemInfo.Clear();
+                
+                // 가상 목록 크기를 0으로 설정하여 이전 항목 모두 제거
+                browser.VirtualListSize = 0;
+                
+                // 하위 디렉토리 및 파일 추가
+                var subFiles = GetSubFiles(currentDir);
+                if (subDirs.Length > 0)
+                    m_ShellItemInfo.AddRange(subDirs);
+                if (subFiles != null && subFiles.Length > 0)
+                    m_ShellItemInfo.AddRange(subFiles);
+                
+                // 스크롤 위치 초기화
+                browser.TopItem = null;
+                
+                // 새 가상 목록 크기 설정
+                browser.VirtualListSize = m_ShellItemInfo.Count;
+                
+                // 첫 번째 항목 선택 (화면 갱신 재개 전에)
+                if (browser.VirtualListSize > 0)
+                {
+                    browser.SelectedIndices.Clear();
+                    browser.SelectedIndices.Add(0);
+                }
+            }
+            finally
+            {
+                // 화면 갱신 재개
+                browser.EndUpdate();
+            }
+            
+            // 화면 강제 갱신
+            browser.Invalidate(true);
+            browser.Update();
+            
+            // 첫 번째 항목이 보이도록 스크롤
+            if (browser.VirtualListSize > 0)
+            {
+                browser.EnsureVisible(0);
+                browser.FocusedItem = browser.Items[0];
+            }
             
             // 파일 표시창 경로가 변경되면 폴더 목록창에도 반영
             SyncNavigationPaneWithCurrentPath();
@@ -1283,13 +1506,42 @@ namespace TotalCommander.GUI
         /// </summary>
         private void SelectFirstItem()
         {
-            if (browser.VirtualListSize > 0)
+            if (browser.VirtualListSize <= 0)
+                return;
+                
+            // 화면 갱신 일시 중지
+            browser.BeginUpdate();
+            
+            try
             {
+                // 현재 선택 초기화
                 browser.SelectedIndices.Clear();
-                browser.SelectedIndices.Add(0);  // 첫 번째 항목(인덱스 0) 선택
-                browser.EnsureVisible(0);        // 보이게 스크롤
-                browser.FocusedItem = browser.Items[0]; // 포커스 설정
+                
+                // 스크롤 위치 초기화
+                browser.TopItem = null;
+                
+                // 첫 번째 항목 선택
+                browser.SelectedIndices.Add(0);
+                
+                // 포커스 설정
+                if (browser.Items.Count > 0)
+                    browser.FocusedItem = browser.Items[0];
             }
+            finally
+            {
+                // 화면 갱신 재개
+                browser.EndUpdate();
+            }
+            
+            // 화면 강제 갱신
+            browser.Invalidate(true);
+            browser.Update();
+            
+            // 첫 번째 항목이 보이도록 스크롤
+            browser.EnsureVisible(0);
+            
+            // ListView에게 처리할 시간을 주기 위한 이벤트 처리
+            Application.DoEvents();
         }
 
         private static ListViewItem InitListviewItem(FileSystemInfo info)
@@ -1830,6 +2082,40 @@ namespace TotalCommander.GUI
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// 레이아웃을 조정합니다.
+        /// </summary>
+        private void AdjustLayout()
+        {
+            // 주소표시줄 위치 및 크기 설정
+            txtPath.Location = new System.Drawing.Point(0, 0);
+            txtPath.Anchor = System.Windows.Forms.AnchorStyles.Top | 
+                            System.Windows.Forms.AnchorStyles.Left | 
+                            System.Windows.Forms.AnchorStyles.Right;
+            txtPath.Width = this.Width;
+            
+            // 디스크 브라우저 및 저장소 상태 숨기기
+            disksBrowser.Visible = false;
+            lblTopStorageStatus.Visible = false;
+            
+            // splMainView 위치 및 크기 조정
+            int topMargin = txtPath.Height + 2; // 주소표시줄 아래 약간의 여백
+            splMainView.Location = new System.Drawing.Point(0, topMargin);
+            splMainView.Height = this.Height - topMargin - lblBotStatus.Height;
+            
+            // 주소표시줄 업데이트
+            txtPath.Text = CurrentPath;
+        }
+        
+        /// <summary>
+        /// 컨트롤 크기가 변경될 때 레이아웃을 재조정합니다.
+        /// </summary>
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            AdjustLayout();
         }
     }
 }

@@ -33,6 +33,9 @@ namespace TotalCommander.GUI
 
             // 복사할 총 바이트 수 계산
             CalculateTotalBytes();
+            
+            // Load 이벤트 핸들러 등록
+            this.Load += FormProgressCopy_Load;
         }
 
         private void InitializeComponent()
