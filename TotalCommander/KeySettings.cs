@@ -25,6 +25,7 @@ namespace TotalCommander
         GoBack,             // 뒤로 이동
         GoForward,          // 앞으로 이동
         Exit,               // 종료
+        Rename,             // 이름 변경
         UserExecute         // 사용자 정의 실행 옵션
     }
 
@@ -57,148 +58,101 @@ namespace TotalCommander
         {
             return Name;
         }
-
+        
         /// <summary>
         /// 사용자 실행 옵션을 실행합니다.
         /// </summary>
-        /// <param name="explorer1SelectedPath">왼쪽 탐색기에서 선택된 항목의 경로</param>
-        /// <param name="explorer2SelectedPath">오른쪽 탐색기에서 선택된 항목의 경로</param>
-        public void Execute(string explorer1SelectedPath, string explorer2SelectedPath)
+        /// <param name="leftExplorerFullPath">왼쪽 파일 목록에서 선택된 항목의 전체 경로</param>
+        /// <param name="rightExplorerFullPath">오른쪽 파일 목록에서 선택된 항목의 전체 경로</param>
+        /// <param name="focusingExplorerFullPath">현재 포커싱된 파일표시창에 선택된 항목의 전체 경로</param>
+        public void Execute(string leftExplorerFullPath, string rightExplorerFullPath, string focusingExplorerFullPath = null)
         {
             try
             {
+                // 디버깅 정보 - 각 경로 확인
+                System.Text.StringBuilder debugInfo = new System.Text.StringBuilder();
+                debugInfo.AppendLine("파라미터 변수 디버그 정보:");
+                debugInfo.AppendLine($"왼쪽 탐색기 경로: {leftExplorerFullPath ?? "없음"}");
+                debugInfo.AppendLine($"오른쪽 탐색기 경로: {rightExplorerFullPath ?? "없음"}");
+                debugInfo.AppendLine($"현재 포커싱 탐색기 경로: {focusingExplorerFullPath ?? "없음"}");
+                debugInfo.AppendLine($"원본 파라미터: {Parameters}");
+
+                // 파라미터 변수 치환
                 string parameters = Parameters;
                 
-                // 매개변수 치환
-                if (!string.IsNullOrEmpty(parameters))
-                {
-                    parameters = parameters.Replace("{Explorer1:SelectedItem}", explorer1SelectedPath ?? "");
-                    parameters = parameters.Replace("{Explorer2:SelectedItem}", explorer2SelectedPath ?? "");
-                }
-
-                // 디버깅 정보 표시
-                MessageBox.Show($"실행 경로: {ExecutablePath}\n매개변수: {parameters}\n" +
-                              $"전체 경로: {Path.GetFullPath(ExecutablePath)}", 
-                              "실행 정보", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                // 실행 파일 경로 정규화
-                string fullPath = Path.GetFullPath(ExecutablePath);
-                string workingDir = Path.GetDirectoryName(fullPath) ?? Environment.CurrentDirectory;
+                // 경로 유효성 검사 - null이면 빈 문자열로 대체
+                leftExplorerFullPath = leftExplorerFullPath ?? string.Empty;
+                rightExplorerFullPath = rightExplorerFullPath ?? string.Empty;
+                focusingExplorerFullPath = focusingExplorerFullPath ?? string.Empty;
                 
-                bool success = false;
-
-                // 다양한 방법으로 프로그램 실행 시도
-                try
+                // 디렉토리 경로 미리 계산
+                string leftExplorerDirPath = string.Empty;
+                string rightExplorerDirPath = string.Empty;
+                string focusingExplorerDirPath = string.Empty;
+                
+                // 디렉토리 경로 안전하게 추출
+                if (!string.IsNullOrEmpty(leftExplorerFullPath))
                 {
-                    // 방법 1: ShellExecute 방식 (가장 일반적)
-                    System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo();
-                    psi.FileName = fullPath;
-                    psi.Arguments = parameters;
-                    psi.UseShellExecute = true;
-                    psi.WorkingDirectory = workingDir;
-                    psi.CreateNoWindow = false;
-
-                    System.Diagnostics.Process process = System.Diagnostics.Process.Start(psi);
-                    if (process != null)
-                    {
-                        success = true;
-                        return;
+                    try {
+                        leftExplorerDirPath = Path.GetDirectoryName(leftExplorerFullPath) ?? leftExplorerFullPath;
+                    } catch {
+                        leftExplorerDirPath = leftExplorerFullPath;
                     }
+                    debugInfo.AppendLine($"왼쪽 디렉토리 경로: {leftExplorerDirPath}");
                 }
-                catch (Exception ex)
+                
+                if (!string.IsNullOrEmpty(rightExplorerFullPath))
                 {
-                    MessageBox.Show("ShellExecute 방식 실패: " + ex.Message, 
-                                  "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    try {
+                        rightExplorerDirPath = Path.GetDirectoryName(rightExplorerFullPath) ?? rightExplorerFullPath;
+                    } catch {
+                        rightExplorerDirPath = rightExplorerFullPath;
+                    }
+                    debugInfo.AppendLine($"오른쪽 디렉토리 경로: {rightExplorerDirPath}");
                 }
-
-                if (!success)
+                
+                if (!string.IsNullOrEmpty(focusingExplorerFullPath))
                 {
-                    try
-                    {
-                        // 방법 2: 셸 명령어로 실행 (start 명령 사용)
-                        System.Diagnostics.Process shellProcess = new System.Diagnostics.Process();
-                        shellProcess.StartInfo.FileName = "cmd.exe";
-                        shellProcess.StartInfo.Arguments = $"/c start \"\" \"{fullPath}\" {parameters}";
-                        shellProcess.StartInfo.UseShellExecute = true;
-                        shellProcess.StartInfo.CreateNoWindow = true;
-                        shellProcess.Start();
-                        success = true;
-                        return;
+                    try {
+                        focusingExplorerDirPath = Path.GetDirectoryName(focusingExplorerFullPath) ?? focusingExplorerFullPath;
+                    } catch {
+                        focusingExplorerDirPath = focusingExplorerFullPath;
                     }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("셸 명령어 방식 실패: " + ex.Message, 
-                                      "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    debugInfo.AppendLine($"포커싱 디렉토리 경로: {focusingExplorerDirPath}");
                 }
+                
+                // 모든 변수 치환 - 가장 긴 변수명부터 치환 (짧은 변수명이 긴 변수명의 일부일 경우를 대비)
+                // 왼쪽 탐색기 변수 치환
+                parameters = parameters.Replace("{SelectedItemFullPath:LeftExplorer}", leftExplorerFullPath);
+                parameters = parameters.Replace("{SelectedItemDirPath:LeftExplorer}", leftExplorerDirPath);
+                
+                // 오른쪽 탐색기 변수 치환
+                parameters = parameters.Replace("{SelectedItemFullPath:RightExplorer}", rightExplorerFullPath);
+                parameters = parameters.Replace("{SelectedItemDirPath:RightExplorer}", rightExplorerDirPath);
+                
+                // 포커싱 탐색기 변수 치환
+                parameters = parameters.Replace("{SelectedItemFullPath:FocusingExplorer}", focusingExplorerFullPath);
+                parameters = parameters.Replace("{SelectedItemDirPath:FocusingExplorer}", focusingExplorerDirPath);
+                
+                // 하위 호환성을 위한 이전 변수명 치환
+                parameters = parameters.Replace("{Explorer1:SelectedItem}", leftExplorerFullPath);
+                parameters = parameters.Replace("{Explorer2:SelectedItem}", rightExplorerFullPath);
+                parameters = parameters.Replace("{ActiveExplorer:SelectedItem}", focusingExplorerFullPath);
+                
+                debugInfo.AppendLine($"치환 후 파라미터: {parameters}");
 
-                if (!success)
-                {
-                    try
-                    {
-                        // 방법 3: 기본 Process.Start 호출
-                        System.Diagnostics.Process.Start(fullPath, parameters);
-                        success = true;
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("기본 Process.Start 실패: " + ex.Message, 
-                                      "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-
-                if (!success)
-                {
-                    try
-                    {
-                        // 방법 4: rundll32 사용
-                        System.Diagnostics.Process process = new System.Diagnostics.Process();
-                        process.StartInfo.FileName = "rundll32.exe";
-                        process.StartInfo.Arguments = $"shell32.dll,ShellExec_RunDLL \"{fullPath}\" {parameters}";
-                        process.StartInfo.UseShellExecute = true;
-                        process.Start();
-                        success = true;
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("rundll32 방식 실패: " + ex.Message, 
-                                      "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-
-                // 마지막 시도: Explorer로 실행
-                if (!success)
-                {
-                    try
-                    {
-                        System.Diagnostics.Process process = new System.Diagnostics.Process();
-                        process.StartInfo.FileName = "explorer.exe";
-                        process.StartInfo.Arguments = $"\"{fullPath}\"";
-                        process.StartInfo.UseShellExecute = true;
-                        process.Start();
-                        success = true;
-                        return;
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Explorer 방식 실패: " + ex.Message, 
-                                      "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-
-                if (!success)
-                {
-                    MessageBox.Show("모든 실행 방법이 실패했습니다. 관리자 권한이 필요하거나 파일이 존재하지 않을 수 있습니다.\n" +
-                                  $"경로: {fullPath}", 
-                                  "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                // 디버그 정보를 로그 파일에 기록
+                Logger.DebugMultiline($"UserExecuteOption({Name})", debugInfo.ToString());
+                
+                // 프로세스 시작
+                Logger.Info($"Executing: {ExecutablePath} {parameters}");
+                System.Diagnostics.Process.Start(ExecutablePath, parameters);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"실행 중 오류가 발생했습니다: {ex.Message}\n스택 추적: {ex.StackTrace}", 
-                               "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Logger.Error(ex, $"UserExecuteOption({Name}) execution failed");
+                System.Windows.Forms.MessageBox.Show($"실행 중 오류가 발생했습니다: {ex.Message}", "실행 오류", 
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
     }
@@ -402,7 +356,8 @@ namespace TotalCommander
                         f5Debug = $"저장 전 F5 키 설정: 액션={setting.Action}";
                         if (setting.Action == KeyAction.UserExecute)
                             f5Debug += $", 옵션={setting.UserExecuteOptionName}";
-                        MessageBox.Show(f5Debug, "설정 저장 중", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        // 메시지 박스를 로그로 대체
+                        Logger.Info(f5Debug);
                         break;
                     }
                 }
@@ -442,6 +397,8 @@ namespace TotalCommander
                     }
                     catch (Exception ex)
                     {
+                        // 로그에 기록하고 메시지 박스 표시
+                        Logger.Error(ex, "저장된 설정 파일 검증 중 오류");
                         MessageBox.Show("저장된 설정 파일 검증 중 오류: " + ex.Message,
                                       "설정 검증 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
@@ -449,6 +406,8 @@ namespace TotalCommander
             }
             catch (Exception ex)
             {
+                // 로그에 기록하고 메시지 박스 표시
+                Logger.Error(ex, "설정을 저장하는 중 오류가 발생했습니다.");
                 MessageBox.Show("설정을 저장하는 중 오류가 발생했습니다: " + ex.Message,
                               "설정 저장 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -462,9 +421,9 @@ namespace TotalCommander
             // 설정 파일 경로
             string settingsPath = SettingsFilePath;
             
-            // 디버깅 - 설정 파일 경로 확인
-            MessageBox.Show($"설정 파일 경로: {settingsPath}\n파일 존재 여부: {File.Exists(settingsPath)}",
-                           "설정 파일 경로", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // 디버깅 - 설정 파일 경로 확인 (메시지 박스를 로그로 대체)
+            Logger.Info($"설정 파일 경로: {settingsPath}");
+            Logger.Info($"파일 존재 여부: {File.Exists(settingsPath)}");
             
             if (!File.Exists(settingsPath))
             {
@@ -504,7 +463,8 @@ namespace TotalCommander
                             string loadMsg = $"로드된 F5 키 설정: 액션={setting.Action}";
                             if (setting.Action == KeyAction.UserExecute)
                                 loadMsg += $", 옵션={setting.UserExecuteOptionName}";
-                            MessageBox.Show(loadMsg, "설정 로드", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            // 메시지 박스를 로그로 대체
+                            Logger.Info(loadMsg);
                             break;
                         }
                     }
@@ -512,14 +472,16 @@ namespace TotalCommander
                     // F5 키 설정이 없으면 경고 표시
                     if (!hasF5Setting)
                     {
-                        MessageBox.Show("로드된 설정에 F5 키 설정이 없습니다!", 
-                                       "설정 로드 경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        // 메시지 박스를 로그로 대체
+                        Logger.Warning("로드된 설정에 F5 키 설정이 없습니다!");
                     }
                     
                     return loadedSettings;
                 }
                 else
                 {
+                    // 로그에 기록하고 메시지 박스 표시
+                    Logger.Error("설정을 로드했으나 null 값이 반환되었습니다.");
                     MessageBox.Show("설정을 로드했으나 null 값이 반환되었습니다.",
                                   "설정 로드 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return new KeySettings();
@@ -527,6 +489,8 @@ namespace TotalCommander
             }
             catch (Exception ex)
             {
+                // 로그에 기록하고 메시지 박스 표시
+                Logger.Error(ex, "설정을 불러오는 중 오류가 발생했습니다.");
                 MessageBox.Show("설정을 불러오는 중 오류가 발생했습니다: " + ex.Message,
                               "설정 불러오기 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 

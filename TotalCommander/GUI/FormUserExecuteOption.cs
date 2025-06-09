@@ -14,6 +14,17 @@ namespace TotalCommander.GUI
         private KeySettings keySettings;
         private UserExecuteOption currentOption;
         private bool isEditing;
+        
+        // 사용 가능한 파라미터 변수 목록
+        private readonly Dictionary<string, string> parameterVariables = new Dictionary<string, string>
+        {
+            { "{SelectedItemFullPath:LeftExplorer}", "왼쪽 파일 목록에서 선택된 항목의 전체 경로" },
+            { "{SelectedItemDirPath:LeftExplorer}", "왼쪽 파일 목록에서 선택된 항목의 디렉토리 경로" },
+            { "{SelectedItemFullPath:RightExplorer}", "오른쪽 파일 목록에서 선택된 항목의 전체 경로" },
+            { "{SelectedItemDirPath:RightExplorer}", "오른쪽 파일 목록에서 선택된 항목의 디렉토리 경로" },
+            { "{SelectedItemFullPath:FocusingExplorer}", "현재 포커싱된 파일표시창에 선택된 항목의 전체 경로" },
+            { "{SelectedItemDirPath:FocusingExplorer}", "현재 포커싱된 파일표시창에 선택된 항목의 디렉토리 경로" }
+        };
 
         public FormUserExecuteOption(KeySettings settings)
         {
@@ -51,6 +62,7 @@ namespace TotalCommander.GUI
             this.lblHint = new System.Windows.Forms.Label();
             this.btnSave = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
+            this.pnlVariables = new System.Windows.Forms.Panel();
             this.SuspendLayout();
             // 
             // lblTitle
@@ -132,17 +144,28 @@ namespace TotalCommander.GUI
             // 
             this.lblHint.Location = new System.Drawing.Point(14, 150);
             this.lblHint.Name = "lblHint";
-            this.lblHint.Size = new System.Drawing.Size(428, 49);
+            this.lblHint.Size = new System.Drawing.Size(428, 20);
             this.lblHint.TabIndex = 8;
-            this.lblHint.Text = "힌트: 파라미터에 다음 변수를 사용할 수 있습니다.\r\n{Explorer1:SelectedItem} - 왼쪽 파일 목록에서 선택된 항목 경로\r\n{Explorer2:SelectedItem} - 오른쪽 파일 목록에서 선택된 항목 경로";
+            this.lblHint.Text = "힌트: 아래 파라미터 변수를 클릭하면 파라미터 텍스트 창에 추가됩니다.";
+            // 
+            // pnlVariables
+            // 
+            this.pnlVariables.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlVariables.BorderStyle = BorderStyle.FixedSingle;
+            this.pnlVariables.Location = new System.Drawing.Point(16, 173);
+            this.pnlVariables.Name = "pnlVariables";
+            this.pnlVariables.Size = new System.Drawing.Size(426, 100);
+            this.pnlVariables.TabIndex = 9;
+            this.pnlVariables.AutoScroll = true;
             // 
             // btnSave
             // 
             this.btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSave.Location = new System.Drawing.Point(286, 211);
+            this.btnSave.Location = new System.Drawing.Point(286, 286);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(75, 23);
-            this.btnSave.TabIndex = 9;
+            this.btnSave.TabIndex = 10;
             this.btnSave.Text = "저장";
             this.btnSave.UseVisualStyleBackColor = true;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
@@ -151,10 +174,10 @@ namespace TotalCommander.GUI
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(367, 211);
+            this.btnCancel.Location = new System.Drawing.Point(367, 286);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
-            this.btnCancel.TabIndex = 10;
+            this.btnCancel.TabIndex = 11;
             this.btnCancel.Text = "취소";
             this.btnCancel.UseVisualStyleBackColor = true;
             // 
@@ -164,9 +187,10 @@ namespace TotalCommander.GUI
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(454, 246);
+            this.ClientSize = new System.Drawing.Size(454, 321);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSave);
+            this.Controls.Add(this.pnlVariables);
             this.Controls.Add(this.lblHint);
             this.Controls.Add(this.txtParameters);
             this.Controls.Add(this.lblParameters);
@@ -196,6 +220,7 @@ namespace TotalCommander.GUI
         private System.Windows.Forms.Label lblParameters;
         private System.Windows.Forms.TextBox txtParameters;
         private System.Windows.Forms.Label lblHint;
+        private System.Windows.Forms.Panel pnlVariables;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Button btnCancel;
 
@@ -214,6 +239,49 @@ namespace TotalCommander.GUI
             {
                 txtName.ReadOnly = true;
                 txtName.BackColor = SystemColors.Control;
+            }
+            
+            // 파라미터 변수 패널 초기화
+            InitializeParameterVariables();
+        }
+        
+        // 파라미터 변수 패널 초기화
+        private void InitializeParameterVariables()
+        {
+            int y = 10;
+            
+            // 각 파라미터 변수에 대한 링크 라벨 생성
+            foreach (var variable in parameterVariables)
+            {
+                var linkLabel = new LinkLabel
+                {
+                    Text = $"{variable.Key} - {variable.Value}",
+                    AutoSize = true,
+                    Location = new Point(10, y),
+                    LinkBehavior = LinkBehavior.HoverUnderline,
+                    Tag = variable.Key
+                };
+                
+                // 클릭 이벤트 핸들러 등록
+                linkLabel.LinkClicked += LinkLabel_LinkClicked;
+                
+                // 패널에 추가
+                pnlVariables.Controls.Add(linkLabel);
+                
+                y += 25; // 다음 변수 위치 조정
+            }
+        }
+        
+        // 링크 라벨 클릭 이벤트 처리
+        private void LinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            if (sender is LinkLabel linkLabel && linkLabel.Tag is string variableName)
+            {
+                // 현재 커서 위치에 변수 삽입
+                txtParameters.SelectedText = variableName;
+                
+                // 포커스 설정
+                txtParameters.Focus();
             }
         }
 

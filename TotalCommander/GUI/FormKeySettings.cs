@@ -272,6 +272,7 @@ namespace TotalCommander.GUI
                 case KeyAction.GoBack: return "Go Back";
                 case KeyAction.GoForward: return "Go Forward";
                 case KeyAction.Exit: return "Exit";
+                case KeyAction.Rename: return "Rename";
                 case KeyAction.UserExecute: return "User Execute Option";
                 default: return action.ToString();
             }
@@ -293,6 +294,7 @@ namespace TotalCommander.GUI
             if (displayText == "Go Back") return KeyAction.GoBack;
             if (displayText == "Go Forward") return KeyAction.GoForward;
             if (displayText == "Exit") return KeyAction.Exit;
+            if (displayText == "Rename") return KeyAction.Rename;
             if (displayText == "User Execute Option") return KeyAction.UserExecute;
 
             // 기본값

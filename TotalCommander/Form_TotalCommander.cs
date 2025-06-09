@@ -33,7 +33,7 @@ namespace TotalCommander
             // 기능 키 설정 불러오기
             keySettings = KeySettings.Load();
             
-            // 디버깅: F5 키 설정 로드 확인
+            // 디버깅: F5 키 설정 로드 확인 (메시지 박스 대신 로그로 대체)
             KeyAction f5Action = keySettings.GetActionForKey(Keys.F5);
             string f5UserOption = keySettings.GetUserExecuteOptionNameForKey(Keys.F5);
             string f5Debug = $"시작 시 F5 키 설정: 액션={f5Action}";
@@ -46,7 +46,8 @@ namespace TotalCommander
                     f5Debug += $"\n실행 파일: {option.ExecutablePath}";
                 }
             }
-            MessageBox.Show(f5Debug, "기능 키 설정 로드", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // 메시지 박스 대신 로그로 출력
+            Logger.Info(f5Debug);
             
             // Initialize the static ImageList for all ShellBrowser instances FIRST.
             GUI.ShellBrowser.SmallImageList = new ImageList();
@@ -89,7 +90,8 @@ namespace TotalCommander
                     configInfo += $" ({setting.UserExecuteOptionName})";
                 configInfo += "\n";
             }
-            //MessageBox.Show(configInfo, "설정 로드 정보", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // 메시지 박스 대신 로그로 출력
+            Logger.DebugMultiline("설정 로드 정보", configInfo);
 
             // 컬럼 설정 로드 및 적용
             LoadColumnSettings();
@@ -244,56 +246,73 @@ namespace TotalCommander
                 case KeyAction.Exit:
                     this.Close();
                     break;
+                case KeyAction.Rename:
+                    m_PreviousFocus.RenameSelectedItem();
+                    break;
             }
         }
 
         private void ExecuteUserOption(Keys key)
         {
+            Logger.Debug($"ExecuteUserOption called with key: {key}");
+            
             UserExecuteOption option = keySettings.GetUserExecuteOptionForKey(key);
             if (option == null)
             {
+                Logger.Warning($"No user execute option found for key: {key}");
                 MessageBox.Show($"키 {key}에 지정된 사용자 실행 옵션을 찾을 수 없습니다.", "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            // 현재 설정 표시
-            MessageBox.Show($"키: {key}\n옵션 이름: {option.Name}\n실행 경로: {option.ExecutablePath}\n매개변수: {option.Parameters}", 
-                           "사용자 실행 옵션 정보", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-            // 현재 선택된 항목 경로 가져오기
-            string explorer1SelectedPath = GetSelectedPathFromExplorer(shellBrowser_Left);
-            string explorer2SelectedPath = GetSelectedPathFromExplorer(shellBrowser_Right);
+            Logger.Debug($"Found user execute option: {option.Name}");
+            
+            // 왼쪽/오른쪽 파일창에서 선택된 항목 경로 가져오기
+            string leftExplorerFullPath = GetSelectedPathFromExplorer(shellBrowser_Left);
+            string rightExplorerFullPath = GetSelectedPathFromExplorer(shellBrowser_Right);
+            
+            // 현재 포커싱된 파일표시창에서 선택된 항목 경로
+            string focusingExplorerFullPath = GetSelectedPathFromExplorer(m_PreviousFocus);
+            
+            Logger.Debug($"Executing option '{option.Name}' with paths: Left={leftExplorerFullPath ?? "null"}, Right={rightExplorerFullPath ?? "null"}, Focus={focusingExplorerFullPath ?? "null"}");
 
             // 옵션 실행
-            option.Execute(explorer1SelectedPath, explorer2SelectedPath);
+            option.Execute(leftExplorerFullPath, rightExplorerFullPath, focusingExplorerFullPath);
         }
 
         private string GetSelectedPathFromExplorer(ShellBrowser explorer)
         {
             if (explorer == null)
+            {
+                Logger.Debug("GetSelectedPathFromExplorer: explorer is null");
                 return null;
+            }
 
-            // 선택된 항목이 있는지 확인
+            // 현재 탐색기의 선택된 항목이 없거나 잘못된 경우 현재 경로 반환
+            if (explorer.FileExplorer.SelectedIndices.Count == 0)
+            {
+                Logger.Debug($"GetSelectedPathFromExplorer: No selected items. Returning current path: {explorer.CurrentPath}");
+                return explorer.CurrentPath; // 항목이 선택되지 않았을 때 현재 디렉토리 경로 반환
+            }
+                
             try
             {
-                // 선택된 항목의 전체 경로 가져오기
-                ListViewItem selectedItem = null;
-                
-                // UpdateFolderSummaryStatus 메서드는 상태를 업데이트하는 공개 메서드이며,
-                // 이를 통해 선택된 항목에 대한 정보를 확인하거나
-                // 다른 공개 메서드/속성을 통해 선택된 항목의 경로를 가져올 수 있습니다.
-                
-                // 대안: 현재 경로만 가져와서 사용
-                string currentPath = explorer.CurrentPath;
-                
-                // 선택된 항목이 없으면 현재 경로만 반환
-                return currentPath;
+                int selectedIndex = explorer.FileExplorer.SelectedIndices[0];
+                if (selectedIndex < 0 || selectedIndex >= explorer.m_ShellItemInfo.Count)
+                {
+                    Logger.Debug($"GetSelectedPathFromExplorer: Selected index {selectedIndex} is out of range. Returning current path: {explorer.CurrentPath}");
+                    return explorer.CurrentPath; // 인덱스가 범위를 벗어날 경우 현재 디렉토리 경로 반환
+                }
+                    
+                FileSystemInfo selectedItem = explorer.m_ShellItemInfo[selectedIndex];
+                Logger.Debug($"GetSelectedPathFromExplorer: Selected item: {selectedItem.FullName}");
+                return selectedItem.FullName;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("선택된 항목의 경로를 가져오는 중 오류가 발생했습니다: " + ex.Message, 
-                               "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return null;
+                // 오류 발생 시 현재 디렉토리 경로 반환
+                Logger.Error(ex, "GetSelectedPathFromExplorer failed");
+                MessageBox.Show($"선택된 항목 경로를 가져오는 중 오류 발생: {ex.Message}", "경로 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return explorer.CurrentPath;
             }
         }
 

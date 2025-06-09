@@ -36,7 +36,7 @@ namespace TotalCommander.GUI
         private bool CanCut = false;
         private ListViewItem[] m_ListItemCache = null; //array to cache items for the virtual list
         private int m_FirstItem = 0; //stores the index of the first item in the cache
-        List<FileSystemInfo> m_ShellItemInfo = new List<FileSystemInfo>();
+        public List<FileSystemInfo> m_ShellItemInfo = new List<FileSystemInfo>();
         public string CurrentPath = Path.GetPathRoot(Environment.SystemDirectory);
         private SortOrder Order = SortOrder.None;
         private int SortColumn = 0;
@@ -52,6 +52,11 @@ namespace TotalCommander.GUI
 
         #region Public Properties
         public Label BottomStatusLabel => lblBotStatus;
+        
+        /// <summary>
+        /// 파일 탐색기 컨트롤에 대한 접근자
+        /// </summary>
+        public ListView FileExplorer => browser;
         #endregion
 
         public ShellBrowser()
@@ -1688,6 +1693,142 @@ namespace TotalCommander.GUI
             if (splMainView != null && handler != null)
             {
                 splMainView.SplitterMoved -= handler;
+            }
+        }
+
+        /// <summary>
+        /// 선택된 파일이나 폴더의 이름을 변경합니다.
+        /// </summary>
+        public void RenameSelectedItem()
+        {
+            if (browser.SelectedIndices.Count != 1)
+            {
+                MessageBox.Show("이름을 변경하려면 하나의 항목만 선택해야 합니다.", "이름 변경", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            int selectedIndex = browser.SelectedIndices[0];
+            if (selectedIndex < 0 || selectedIndex >= m_ShellItemInfo.Count)
+                return;
+
+            FileSystemInfo selectedItem = m_ShellItemInfo[selectedIndex];
+            string oldPath = selectedItem.FullName;
+            string oldName = selectedItem.Name;
+            string parentPath = Path.GetDirectoryName(oldPath);
+            
+            // 입력 대화상자를 사용하여 새 이름을 받음
+            using (var dialog = new Form())
+            {
+                dialog.Text = "이름 변경";
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.Width = 405; // 빨간색 선에 맞게 폼 너비 조정
+                dialog.Height = 130;
+                dialog.ShowInTaskbar = false;
+                dialog.KeyPreview = true; // 키 이벤트를 폼에서 먼저 처리하도록 설정
+                
+                // ESC 키 처리를 위한 이벤트 핸들러 추가
+                dialog.KeyDown += (s, e) => {
+                    if (e.KeyCode == Keys.Escape)
+                    {
+                        dialog.DialogResult = DialogResult.Cancel;
+                        dialog.Close();
+                    }
+                };
+
+                // 텍스트박스 위치 조정 (라벨 제거로 인해)
+                var textBox = new TextBox
+                {
+                    Text = oldName,
+                    Left = 12,
+                    Top = 20,
+                    Width = 370,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                };
+                
+                // 텍스트박스에 모든 텍스트 선택
+                textBox.SelectAll();
+                
+                var okButton = new Button
+                {
+                    Text = "저장(&S)",  // Alt+S 단축키를 위한 &S 표기
+                    DialogResult = DialogResult.OK,
+                    Left = 227,
+                    Top = 60,
+                    Width = 75
+                };
+                
+                var cancelButton = new Button
+                {
+                    Text = "닫기(&C)",  // Alt+C 단축키를 위한 &C 표기
+                    DialogResult = DialogResult.Cancel,
+                    Left = 308,
+                    Top = 60,
+                    Width = 75
+                };
+                
+                dialog.Controls.Add(textBox);
+                dialog.Controls.Add(okButton);
+                dialog.Controls.Add(cancelButton);
+                
+                dialog.AcceptButton = okButton;    // Enter 키로 확인 버튼 클릭
+                dialog.CancelButton = cancelButton; // ESC 키로 취소 버튼 클릭
+                
+                // 폼 보여주기
+                DialogResult result = dialog.ShowDialog();
+                
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(textBox.Text) && textBox.Text != oldName)
+                {
+                    try
+                    {
+                        string newName = textBox.Text;
+                        string newPath = Path.Combine(parentPath, newName);
+                        
+                        // 동일한 이름이 이미 존재하는지 확인
+                        if (selectedItem is DirectoryInfo && Directory.Exists(newPath))
+                        {
+                            MessageBox.Show($"이미 '{newName}' 폴더가 존재합니다.", "이름 변경 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                        else if (selectedItem is FileInfo && File.Exists(newPath))
+                        {
+                            MessageBox.Show($"이미 '{newName}' 파일이 존재합니다.", "이름 변경 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            return;
+                        }
+                        
+                        // 파일이나 폴더 이름 변경
+                        if (selectedItem is DirectoryInfo)
+                        {
+                            Directory.Move(oldPath, newPath);
+                        }
+                        else
+                        {
+                            File.Move(oldPath, newPath);
+                        }
+                        
+                        // 목록 새로고침
+                        RefreshListView();
+                        
+                        // 이름이 변경된 항목 선택
+                        for (int i = 0; i < m_ShellItemInfo.Count; i++)
+                        {
+                            if (m_ShellItemInfo[i].FullName.Equals(newPath, StringComparison.OrdinalIgnoreCase))
+                            {
+                                browser.SelectedIndices.Clear();
+                                browser.SelectedIndices.Add(i);
+                                browser.EnsureVisible(i);
+                                browser.FocusedItem = browser.Items[i];
+                                break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"이름을 변경하는 중 오류가 발생했습니다: {ex.Message}", "이름 변경 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
             }
         }
     }
