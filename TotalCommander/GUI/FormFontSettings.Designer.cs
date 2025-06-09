@@ -1,3 +1,5 @@
+using TotalCommander;
+
 namespace TotalCommander.GUI
 {
     partial class FormFontSettings
@@ -35,7 +37,7 @@ namespace TotalCommander.GUI
             this.checkBoxBold = new System.Windows.Forms.CheckBox();
             this.checkBoxItalic = new System.Windows.Forms.CheckBox();
             this.groupBoxPreview = new System.Windows.Forms.GroupBox();
-            this.textBoxPreview = new System.Windows.Forms.Label(); // Label로 변경하여 배경색 없이 텍스트만 보이도록
+            this.textBoxPreview = new System.Windows.Forms.Label();
             this.buttonOK = new System.Windows.Forms.Button();
             this.buttonCancel = new System.Windows.Forms.Button();
             this.groupBoxStatusBar = new System.Windows.Forms.GroupBox();
@@ -52,7 +54,7 @@ namespace TotalCommander.GUI
             this.labelFontFamily.Name = "labelFontFamily";
             this.labelFontFamily.Size = new System.Drawing.Size(54, 12);
             this.labelFontFamily.TabIndex = 0;
-            this.labelFontFamily.Text = "글꼴(F):";
+            this.labelFontFamily.Text = StringResources.GetString("FontFamily");
             // 
             // comboBoxFontFamily
             // 
@@ -71,11 +73,11 @@ namespace TotalCommander.GUI
             this.labelFontSize.Name = "labelFontSize";
             this.labelFontSize.Size = new System.Drawing.Size(54, 12);
             this.labelFontSize.TabIndex = 2;
-            this.labelFontSize.Text = "크기(S):";
+            this.labelFontSize.Text = StringResources.GetString("FontSize");
             // 
             // comboBoxFontSize
             // 
-            this.comboBoxFontSize.FormattingEnabled = true; // 사용자가 직접 입력 가능하도록 DropDownList에서 변경
+            this.comboBoxFontSize.FormattingEnabled = true; // ?�용?��? 직접 ?�력 가?�하?�록 DropDownList?�서 변�?
             this.comboBoxFontSize.Location = new System.Drawing.Point(72, 38);
             this.comboBoxFontSize.Name = "comboBoxFontSize";
             this.comboBoxFontSize.Size = new System.Drawing.Size(75, 20);
@@ -90,7 +92,7 @@ namespace TotalCommander.GUI
             this.checkBoxBold.Name = "checkBoxBold";
             this.checkBoxBold.Size = new System.Drawing.Size(62, 16);
             this.checkBoxBold.TabIndex = 4;
-            this.checkBoxBold.Text = "굵게(B)";
+            this.checkBoxBold.Text = StringResources.GetString("Bold");
             this.checkBoxBold.UseVisualStyleBackColor = true;
             this.checkBoxBold.CheckedChanged += new System.EventHandler(this.checkBoxBold_CheckedChanged);
             // 
@@ -101,7 +103,7 @@ namespace TotalCommander.GUI
             this.checkBoxItalic.Name = "checkBoxItalic";
             this.checkBoxItalic.Size = new System.Drawing.Size(86, 16);
             this.checkBoxItalic.TabIndex = 5;
-            this.checkBoxItalic.Text = "기울임꼴(I)";
+            this.checkBoxItalic.Text = StringResources.GetString("Italic");
             this.checkBoxItalic.UseVisualStyleBackColor = true;
             this.checkBoxItalic.CheckedChanged += new System.EventHandler(this.checkBoxItalic_CheckedChanged);
             // 
@@ -113,7 +115,7 @@ namespace TotalCommander.GUI
             this.groupBoxPreview.Size = new System.Drawing.Size(300, 100);
             this.groupBoxPreview.TabIndex = 6;
             this.groupBoxPreview.TabStop = false;
-            this.groupBoxPreview.Text = "샘플";
+            this.groupBoxPreview.Text = StringResources.GetString("Preview");
             // 
             // textBoxPreview
             // 
@@ -122,7 +124,7 @@ namespace TotalCommander.GUI
             this.textBoxPreview.Name = "textBoxPreview";
             this.textBoxPreview.Size = new System.Drawing.Size(294, 80);
             this.textBoxPreview.TabIndex = 0;
-            this.textBoxPreview.Text = "AaBbYyZz 가나다라 123";
+            this.textBoxPreview.Text = StringResources.GetString("SampleText");
             this.textBoxPreview.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // groupBoxStatusBar
@@ -134,7 +136,7 @@ namespace TotalCommander.GUI
             this.groupBoxStatusBar.Size = new System.Drawing.Size(300, 70);
             this.groupBoxStatusBar.TabIndex = 7;
             this.groupBoxStatusBar.TabStop = false;
-            this.groupBoxStatusBar.Text = "하단 상태창";
+            this.groupBoxStatusBar.Text = StringResources.GetString("StatusBarPreview");
             // 
             // checkBoxApplyToStatusBar
             // 
@@ -145,7 +147,7 @@ namespace TotalCommander.GUI
             this.checkBoxApplyToStatusBar.Name = "checkBoxApplyToStatusBar";
             this.checkBoxApplyToStatusBar.Size = new System.Drawing.Size(194, 16);
             this.checkBoxApplyToStatusBar.TabIndex = 0;
-            this.checkBoxApplyToStatusBar.Text = "하단 상태창에도 같은 폰트 적용";
+            this.checkBoxApplyToStatusBar.Text = StringResources.GetString("ApplyToStatusBar");
             this.checkBoxApplyToStatusBar.UseVisualStyleBackColor = true;
             // 
             // labelStatusBarPreview
@@ -155,7 +157,7 @@ namespace TotalCommander.GUI
             this.labelStatusBarPreview.Name = "labelStatusBarPreview";
             this.labelStatusBarPreview.Size = new System.Drawing.Size(282, 12);
             this.labelStatusBarPreview.TabIndex = 1;
-            this.labelStatusBarPreview.Text = "0 files, 0 bytes (총 0 bytes) | 디렉토리 5, 파일 10";
+            this.labelStatusBarPreview.Text = "0 files, 0 bytes (Total 0 bytes) | Dir 5, Files 10";
             // 
             // buttonOK
             // 
@@ -163,7 +165,7 @@ namespace TotalCommander.GUI
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(75, 23);
             this.buttonOK.TabIndex = 8;
-            this.buttonOK.Text = "확인";
+            this.buttonOK.Text = StringResources.GetString("OK");
             this.buttonOK.UseVisualStyleBackColor = true;
             this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
             // 
@@ -174,7 +176,7 @@ namespace TotalCommander.GUI
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
             this.buttonCancel.TabIndex = 9;
-            this.buttonCancel.Text = "취소";
+            this.buttonCancel.Text = StringResources.GetString("Cancel");
             this.buttonCancel.UseVisualStyleBackColor = true;
             this.buttonCancel.Click += new System.EventHandler(this.buttonCancel_Click);
             // 
@@ -202,7 +204,7 @@ namespace TotalCommander.GUI
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "글꼴 설정";
+            this.Text = StringResources.GetString("FontSettingsTitle");
             this.Load += new System.EventHandler(this.FormFontSettings_Load);
             this.groupBoxPreview.ResumeLayout(false);
             this.groupBoxStatusBar.ResumeLayout(false);
@@ -221,7 +223,7 @@ namespace TotalCommander.GUI
         private System.Windows.Forms.CheckBox checkBoxBold;
         private System.Windows.Forms.CheckBox checkBoxItalic;
         private System.Windows.Forms.GroupBox groupBoxPreview;
-        private System.Windows.Forms.Label textBoxPreview; // Label로 변경
+        private System.Windows.Forms.Label textBoxPreview; // Label�?변�?
         private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.Button buttonCancel;
         private System.Windows.Forms.GroupBox groupBoxStatusBar;

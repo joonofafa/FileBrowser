@@ -72,6 +72,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ComboBoxItem.cs" />
+    <Compile Include="CustomDialogHelper.cs" />
+    <Compile Include="CustomMessageBox.cs" />
+    <Compile Include="FormHelper.cs" />
     <Compile Include="GUI\DisksBrowser.cs" />
     <Compile Include="GUI\FileBrowser.cs" />
     <Compile Include="GUI\FormFindFiles.cs">
@@ -146,6 +149,7 @@
     <Compile Include="KeySettings.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="StringResources.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Form_TotalCommander.resx">

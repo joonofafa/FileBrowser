@@ -1,16 +1,24 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Xml;
+using System.Windows.Input;
 using TotalCommander.GUI;
+using System.Reflection;
+using System.Xml.Serialization;
+using System.Configuration;
+using TotalCommander.Properties;
+using System.Diagnostics;
+using System.Xml;
+// 커스텀 대화 상자 클래스 참조
+using static TotalCommander.CustomDialogHelper;
+using static TotalCommander.CustomMessageBox;
 
 namespace TotalCommander
 {
@@ -21,37 +29,35 @@ namespace TotalCommander
         private Font currentAppliedFont;
         private int _tabFocusState = 0;
         private KeySettings keySettings;
-        private bool isRightVisible;
         #endregion
 
         public Form_TotalCommander()
         {
             InitializeComponent();
-            isRightVisible = true;
             
-            // 제목 표시줄에 빌드 일시 표시
+            // Show build date in title bar
             UpdateTitleWithBuildDateTime();
             
             InitializeMenus();
             
-            // 기능 키 설정 불러오기
+            // Load function key settings
             keySettings = KeySettings.Load();
             
-            // 디버깅: F5 키 설정 로드 확인 (메시지 박스 대신 로그로 대체)
+            // Debug: Verify F5 key setting loaded (replace message box with log)
             KeyAction f5Action = keySettings.GetActionForKey(Keys.F5);
             string f5UserOption = keySettings.GetUserExecuteOptionNameForKey(Keys.F5);
-            string f5Debug = $"시작 시 F5 키 설정: 액션={f5Action}";
+            string f5Debug = StringResources.GetString("F5KeySettingAtStartup", f5Action);
             if (f5Action == KeyAction.UserExecute && !string.IsNullOrEmpty(f5UserOption))
             {
-                f5Debug += $", 옵션={f5UserOption}";
+                f5Debug = StringResources.GetString("F5KeyWithOption", f5Action, f5UserOption);
                 UserExecuteOption option = keySettings.GetUserExecuteOptionByName(f5UserOption);
                 if (option != null)
                 {
-                    f5Debug += $"\n실행 파일: {option.ExecutablePath}";
+                    f5Debug += "\n" + StringResources.GetString("F5KeyExecutable", option.ExecutablePath);
                 }
             }
-            // 메시지 박스 대신 로그로 출력
-            Logger.Info(f5Debug);
+            // Output to log instead of message box
+            Logger.Information(f5Debug);
             
             // Initialize the static ImageList for all ShellBrowser instances FIRST.
             GUI.ShellBrowser.SmallImageList = new ImageList();
@@ -75,7 +81,7 @@ namespace TotalCommander
             shellBrowser_Left.StatusChanged += ShellBrowser_StatusChanged;
             shellBrowser_Right.StatusChanged += ShellBrowser_StatusChanged;
 
-            // 키 이벤트를 폼 수준에서 처리하기 위한 설정
+            // Set KeyPreview to handle key events at form level
             this.KeyPreview = true;
 
             // Register KeyDown event
@@ -85,30 +91,30 @@ namespace TotalCommander
             UpdatePanelStatus(shellBrowser_Left);
             UpdatePanelStatus(shellBrowser_Right);
             
-            // 디버깅 메시지: 설정 로드 확인
-            string configInfo = "로드된 키 설정:\n";
+            // Debug message: Verify loaded settings
+            string configInfo = StringResources.GetString("LoadedKeySettings") + "\n";
             foreach (var setting in keySettings.Settings)
             {
-                configInfo += $"{setting.Key}: {setting.Action}";
                 if (setting.Action == KeyAction.UserExecute)
-                    configInfo += $" ({setting.UserExecuteOptionName})";
-                configInfo += "\n";
+                    configInfo += StringResources.GetString("KeySettingWithOption", setting.Key, setting.Action, setting.UserExecuteOptionName) + "\n";
+                else
+                    configInfo += StringResources.GetString("KeySettingFormat", setting.Key, setting.Action) + "\n";
             }
-            // 메시지 박스 대신 로그로 출력
-            Logger.DebugMultiline("설정 로드 정보", configInfo);
+            // Output to log instead of message box
+            Logger.DebugMultiline("Settings Load Info", configInfo);
 
-            // 컬럼 설정 로드 및 적용
+            // Load and apply column settings
             LoadColumnSettings();
             
-            // 컬럼 너비 변경 이벤트 처리
+            // Handle column width changed events
             shellBrowser_Left.RegisterColumnWidthChangedEvent(Browser_ColumnWidthChanged);
             shellBrowser_Right.RegisterColumnWidthChangedEvent(Browser_ColumnWidthChanged);
             
-            // 분할 위치 변경 이벤트 처리
+            // Handle splitter distance changed events
             shellBrowser_Left.RegisterSplitterDistanceChangedEvent(SplitterDistanceChanged);
             shellBrowser_Right.RegisterSplitterDistanceChangedEvent(SplitterDistanceChanged);
 
-            // 메뉴 초기화
+            // Initialize menus
             InitializeMenus();
         }
 
@@ -141,28 +147,30 @@ namespace TotalCommander
             if (tmp != null)
             {
                 m_PreviousFocus = tmp;
+                // 포커스 설정 로그 추가
+                Logger.Debug($"Browser_GotFocus: Focus set to {(tmp == shellBrowser_Left ? "Left" : "Right")} explorer");
             }
         }
 
         #region Bottom buttons
         private void Form_TotalCommander_KeyDown(object sender, KeyEventArgs e)
         {
-            // 키 이벤트 로깅 추가
-            Logger.Debug($"Form_TotalCommander_KeyDown: KeyCode={e.KeyCode}, KeyData={e.KeyData}, Handled={e.Handled}");
+            // Add key event logging
+            Logger.Debug(StringResources.GetString("DebugKeyEvent", e.KeyCode, e.KeyData, e.Handled));
 
-            // 기능 키(F2~F8)인 경우 설정된 액션 실행
+            // For function keys (F2-F8), execute configured action
             if (e.KeyCode >= Keys.F2 && e.KeyCode <= Keys.F8)
             {
-                // F5 키에 대한 특별 처리 - 사용자 실행 옵션이 있는지 확인
+                // Special handling for F5 key - check if user execute option exists
                 if (e.KeyCode == Keys.F5)
                 {
                     KeyAction action = keySettings.GetActionForKey(Keys.F5);
                     if (action == KeyAction.UserExecute)
                     {
-                        // F5 키가 사용자 실행 옵션으로 설정된 경우
+                        // If F5 is set to user execute option
                         ExecuteKeyAction(Keys.F5);
                         e.Handled = true;
-                        e.SuppressKeyPress = true; // 다른 이벤트 핸들러로 전파되지 않도록
+                        e.SuppressKeyPress = true; // Prevent propagation to other event handlers
                         return;
                     }
                 }
@@ -172,7 +180,7 @@ namespace TotalCommander
                 return;
             }
 
-            // 다른 키 처리
+            // Handle other keys
             switch (e.KeyData)
             {
                 case Keys.Delete:
@@ -186,19 +194,19 @@ namespace TotalCommander
                 case Keys.Control | Keys.Q:
                     this.Close();
                     break;
-                // Ctrl+Shift+오른쪽 화살표: 왼쪽에서 오른쪽으로 복사
+                // Ctrl+Shift+Right Arrow: Copy from left to right
                 case Keys.Control | Keys.Shift | Keys.Right:
-                    // Shell32 API를 사용한 복사
+                    // Use Shell32 API for copying
                     CopyBetweenPanels(shellBrowser_Left, shellBrowser_Right);
                     e.Handled = true;
                     break;
-                // Ctrl+Shift+왼쪽 화살표: 오른쪽에서 왼쪽으로 복사
+                // Ctrl+Shift+Left Arrow: Copy from right to left
                 case Keys.Control | Keys.Shift | Keys.Left:
-                    // Shell32 API를 사용한 복사
+                    // Use Shell32 API for copying
                     CopyBetweenPanels(shellBrowser_Right, shellBrowser_Left);
                     e.Handled = true;
                     break;
-                // Alt+D: 왼쪽 주소표시줄 포커스 (현재 선택된 패널에 따라)
+                // Alt+D: Focus left address bar (depending on currently selected panel)
                 case Keys.Alt | Keys.D:
                     if (m_PreviousFocus == shellBrowser_Left)
                     {
@@ -210,32 +218,32 @@ namespace TotalCommander
                     }
                     e.Handled = true;
                     break;
-                // Tab 키는 더 이상 여기서 처리하지 않고 ProcessTabKey 메서드에서만 처리합니다.
+                // Tab key is no longer handled here, it's handled in ProcessTabKey method only
             }
         }
 
         /// <summary>
-        /// 설정된 키 액션 실행
+        /// Execute configured key action
         /// </summary>
         private void ExecuteKeyAction(Keys key)
         {
             KeyAction action = keySettings.GetActionForKey(key);
             
-            // 디버깅 메시지 추가
-            //MessageBox.Show($"키: {key}, 액션: {action}", "디버그 정보", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // Debug message addition
+            //MessageBox.Show($"Key: {key}, Action: {action}", "Debug Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
             
-            // UserExecute 액션이 있으면 우선 처리
+            // If UserExecute action exists, handle it first
             if (action == KeyAction.UserExecute)
             {
                 ExecuteUserOption(key);
                 return;
             }
             
-            // 기본 액션 처리
+            // Default action handling
             switch (action)
             {
                 case KeyAction.None:
-                    // 아무 작업 없음
+                    // No action
                     break;
                 case KeyAction.View:
                 case KeyAction.Edit:
@@ -254,7 +262,7 @@ namespace TotalCommander
                     m_PreviousFocus.DeleteSelectedItems(Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
                     break;
                 case KeyAction.CreateFolder:
-                    m_PreviousFocus.CreateNewFolder();
+            m_PreviousFocus.CreateNewFolder();
                     break;
                 case KeyAction.Properties:
                     m_PreviousFocus.OpenPropertiesWindowWithSelectedItems();
@@ -282,29 +290,35 @@ namespace TotalCommander
 
         private void ExecuteUserOption(Keys key)
         {
-            Logger.Debug($"ExecuteUserOption called with key: {key}");
-            
-            UserExecuteOption option = keySettings.GetUserExecuteOptionForKey(key);
-            if (option == null)
+            try
             {
-                Logger.Warning($"No user execute option found for key: {key}");
-                MessageBox.Show($"키 {key}에 지정된 사용자 실행 옵션을 찾을 수 없습니다.", "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                Logger.Debug($"ExecuteUserOption called with key: {key}");
+                
+                UserExecuteOption option = keySettings.GetUserExecuteOptionForKey(key);
+                if (option == null)
+                {
+                    CustomDialogHelper.ShowMessageBox(this, $"No user execute option found for key: {key}", "Execution Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                Logger.Debug($"Found user execute option: {option.Name}");
+                
+                // Get selected item paths from left/right file panes
+                string leftExplorerFullPath = GetSelectedPathFromExplorer(shellBrowser_Left);
+                string rightExplorerFullPath = GetSelectedPathFromExplorer(shellBrowser_Right);
+                
+                // Get selected item path from currently focused file pane
+                string focusingExplorerFullPath = GetSelectedPathFromExplorer(m_PreviousFocus);
+                
+                Logger.Debug($"Executing option '{option.Name}' with paths: Left={leftExplorerFullPath ?? "null"}, Right={rightExplorerFullPath ?? "null"}, Focus={focusingExplorerFullPath ?? "null"}");
+
+                // Execute option
+                option.Execute(leftExplorerFullPath, rightExplorerFullPath, focusingExplorerFullPath);
             }
-
-            Logger.Debug($"Found user execute option: {option.Name}");
-            
-            // 왼쪽/오른쪽 파일창에서 선택된 항목 경로 가져오기
-            string leftExplorerFullPath = GetSelectedPathFromExplorer(shellBrowser_Left);
-            string rightExplorerFullPath = GetSelectedPathFromExplorer(shellBrowser_Right);
-            
-            // 현재 포커싱된 파일표시창에서 선택된 항목 경로
-            string focusingExplorerFullPath = GetSelectedPathFromExplorer(m_PreviousFocus);
-            
-            Logger.Debug($"Executing option '{option.Name}' with paths: Left={leftExplorerFullPath ?? "null"}, Right={rightExplorerFullPath ?? "null"}, Focus={focusingExplorerFullPath ?? "null"}");
-
-            // 옵션 실행
-            option.Execute(leftExplorerFullPath, rightExplorerFullPath, focusingExplorerFullPath);
+            catch (Exception ex)
+            {
+                CustomDialogHelper.ShowMessageBox(this, $"Error executing user execute option: {ex.Message}", "Execution Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private string GetSelectedPathFromExplorer(ShellBrowser explorer)
@@ -315,11 +329,11 @@ namespace TotalCommander
                 return null;
             }
 
-            // 현재 탐색기의 선택된 항목이 없거나 잘못된 경우 현재 경로 반환
+            // If no selected items or incorrect, return current path
             if (explorer.FileExplorer.SelectedIndices.Count == 0)
             {
                 Logger.Debug($"GetSelectedPathFromExplorer: No selected items. Returning current path: {explorer.CurrentPath}");
-                return explorer.CurrentPath; // 항목이 선택되지 않았을 때 현재 디렉토리 경로 반환
+                return explorer.CurrentPath; // Return current directory path if no item is selected
             }
                 
             try
@@ -328,7 +342,7 @@ namespace TotalCommander
                 if (selectedIndex < 0 || selectedIndex >= explorer.m_ShellItemInfo.Count)
                 {
                     Logger.Debug($"GetSelectedPathFromExplorer: Selected index {selectedIndex} is out of range. Returning current path: {explorer.CurrentPath}");
-                    return explorer.CurrentPath; // 인덱스가 범위를 벗어날 경우 현재 디렉토리 경로 반환
+                    return explorer.CurrentPath; // Return current directory path if index is out of range
                 }
                     
                 FileSystemInfo selectedItem = explorer.m_ShellItemInfo[selectedIndex];
@@ -337,64 +351,64 @@ namespace TotalCommander
             }
             catch (Exception ex)
             {
-                // 오류 발생 시 현재 디렉토리 경로 반환
+                // If error occurs, return current directory path
                 Logger.Error(ex, "GetSelectedPathFromExplorer failed");
-                MessageBox.Show($"선택된 항목 경로를 가져오는 중 오류 발생: {ex.Message}", "경로 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                CustomDialogHelper.ShowMessageBox(this, $"Error getting selected item path: {ex.Message}", "Path Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return explorer.CurrentPath;
             }
         }
 
         private void HandleTabKey()
         {
-            // 모든 중간 상태를 제거하고 명시적으로 4가지 상태만 사용
+            // Remove all intermediate states and explicitly use only 4 states
             _tabFocusState = (_tabFocusState + 1) % 4;
             
-            // 디버깅용 메시지 활성화 - 실제 상태 변화 확인
-            // MessageBox.Show("Tab 상태: " + _tabFocusState);
+            // Debug message activation - confirm actual state change
+            // MessageBox.Show("Tab state: " + _tabFocusState);
             
-            // 명시적으로 4가지 상태를 하드코딩
+            // Explicitly hardcode 4 states
             switch (_tabFocusState)
             {
-                case 0: // 좌측 트리
+                case 0: // Left tree
                     shellBrowser_Left.FocusNavigationPane();
                     break;
-                case 1: // 좌측 파일 목록
+                case 1: // Left file list
                     shellBrowser_Left.FocusFileBrowser();
                     break;
-                case 2: // 우측 트리
+                case 2: // Right tree
                     shellBrowser_Right.FocusNavigationPane();
                     break;
-                case 3: // 우측 파일 목록
+                case 3: // Right file list
                     shellBrowser_Right.FocusFileBrowser();
                     break;
             }
         }
 
-        // 중요: Tab 키를 처리하기 위해 ProcessTabKey 메서드를 오버라이드
+        // Important: Override ProcessTabKey method to handle Tab key
         protected override bool ProcessTabKey(bool forward)
         {
-            // Windows Forms의 기본 Tab 키 동작을 비활성화하고 우리의 커스텀 로직으로 대체
+            // Disable default Tab key behavior and replace with our custom logic
             HandleTabKey();
-            return true; // Tab 키를 처리했음을 의미
+            return true; // Indicates Tab key was handled
         }
         
-        // Tab 키를 더 확실하게 가로채기 위해 ProcessCmdKey 메서드도 오버라이드
+        // Override ProcessCmdKey method to intercept Tab key more reliably
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
-            // 키 이벤트 로깅 추가
+            // Add key event logging
             Logger.Debug($"ProcessCmdKey: keyData={keyData}");
             
-            // Space 키는 파일 브라우저에서 처리하도록 전달
+            // Space key is handled by file browser, pass it on
             if (keyData == Keys.Space)
             {
-                Logger.Debug("ProcessCmdKey: Space 키 감지, 이벤트 전달");
-                return false; // 이벤트를 다른 컨트롤로 전달
+                Logger.Debug("ProcessCmdKey: Space key detected, event passed on");
+                return false; // Pass event to other control
             }
             
-            // F5 키 이벤트 처리
+            // F5 key event handling
             if (keyData == Keys.F5)
             {
-                // F5 키에 대한 특별 처리
+                // Special handling for F5 key
                 KeyAction action = keySettings.GetActionForKey(Keys.F5);
                 
                 if (action == KeyAction.UserExecute)
@@ -404,43 +418,46 @@ namespace TotalCommander
                         UserExecuteOption option = keySettings.GetUserExecuteOptionForKey(Keys.F5);
                         if (option != null)
                         {
-                            // 현재 선택된 항목 경로 가져오기
-                            string explorer1SelectedPath = GetSelectedPathFromExplorer(shellBrowser_Left);
-                            string explorer2SelectedPath = GetSelectedPathFromExplorer(shellBrowser_Right);
+                            // Get selected item path
+                            string leftExplorerSelectedPath = GetSelectedPathFromExplorer(shellBrowser_Left);
+                            string rightExplorerSelectedPath = GetSelectedPathFromExplorer(shellBrowser_Right);
+                            string focusingExplorerSelectedPath = GetSelectedPathFromExplorer(m_PreviousFocus);
+
+                            Logger.Debug($"ProcessCmdKey F5: Executing with Left={leftExplorerSelectedPath}, Right={rightExplorerSelectedPath}, Focus={focusingExplorerSelectedPath}");
                             
-                            // 옵션 직접 실행
-                            option.Execute(explorer1SelectedPath, explorer2SelectedPath);
-                            return true; // 이벤트 처리 완료
+                            // Directly execute option
+                            option.Execute(leftExplorerSelectedPath, rightExplorerSelectedPath, focusingExplorerSelectedPath);
+                            return true; // Event processing completed
                         }
                         else
                         {
-                            MessageBox.Show("설정된 사용자 실행 옵션을 찾을 수 없습니다.", 
-                                           "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            CustomDialogHelper.ShowMessageBox(this, "No configured user execute option found.", 
+                                           "Execution Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"사용자 실행 옵션 실행 중 오류: {ex.Message}", 
-                                       "실행 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        CustomDialogHelper.ShowMessageBox(this, $"Error executing user execute option: {ex.Message}", 
+                                       "Execution Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
-                    return true; // 오류가 발생했지만 이벤트는 처리됨
+                    return true; // Error occurred but event is processed
                 }
                 else if (action != KeyAction.None)
                 {
-                    // 다른 F5 키 액션 처리
+                    // Handle other F5 key actions
                     ExecuteKeyAction(Keys.F5);
-                    return true; // 이벤트 처리 완료
+                    return true; // Event processing completed
                 }
             }
             
-            // Tab 키 처리
+            // Tab key handling
             if (keyData == Keys.Tab)
             {
                 HandleTabKey();
                 return true;
             }
             
-            // 다른 키는 기본 처리
+            // Handle other keys with default processing
             return base.ProcessCmdKey(ref msg, keyData);
         }
         #endregion Bottom buttons
@@ -475,17 +492,17 @@ namespace TotalCommander
         {
             using (FormFontSettings fontDialog = new FormFontSettings(currentAppliedFont))
             {
-                if (fontDialog.ShowDialog(this) == DialogResult.OK)
+                if (ShowDialogCentered(fontDialog) == DialogResult.OK)
                 {
                     Font selectedFont = fontDialog.SelectedFont;
                     if (selectedFont != null)
                     {
-                        // 주 폰트 적용
+                        // Apply main font
                         shellBrowser_Left.ApplyFont(selectedFont);
                         shellBrowser_Right.ApplyFont(selectedFont);
                         currentAppliedFont = selectedFont;
                         
-                        // 하단 상태창 폰트 설정
+                        // Set status bar font
                         bool applyToStatusBar = fontDialog.ApplyToStatusBar;
                         if (applyToStatusBar)
                         {
@@ -493,14 +510,14 @@ namespace TotalCommander
                             shellBrowser_Right.ApplyStatusBarFont(selectedFont);
                         }
                         
-                        // 폰트 설정 저장
+                        // Save font settings
                         SaveFontSettings(selectedFont, applyToStatusBar);
                     }
                 }
             }
         }
 
-        // 폰트 설정을 저장하는 메서드
+        // Method to save font settings
         private void SaveFontSettings(Font font, bool applyToStatusBar)
         {
             try
@@ -508,13 +525,13 @@ namespace TotalCommander
                 string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 string tcFolder = Path.Combine(appDataFolder, "TotalCommander");
                 
-                // 디렉토리가 없으면 생성
+                // Create directory if it doesn't exist
                 if (!Directory.Exists(tcFolder))
                     Directory.CreateDirectory(tcFolder);
                     
                 string fontSettingsPath = Path.Combine(tcFolder, "FontSettings.xml");
                 
-                // 폰트 정보 XML로 저장
+                // Save font settings as XML
                 using (StreamWriter writer = new StreamWriter(fontSettingsPath))
                 {
                     writer.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
@@ -529,14 +546,14 @@ namespace TotalCommander
                     writer.WriteLine("</FontSettings>");
                 }
                 
-                // 디버깅용 메시지 표시
-                MessageBox.Show($"폰트 설정이 저장되었습니다: {fontSettingsPath}", 
-                              "폰트 설정 저장", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Debug message display
+                CustomDialogHelper.ShowMessageBox(this, $"Font settings saved: {fontSettingsPath}", 
+                              "Font Settings Save", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"폰트 설정을 저장하는 중 오류가 발생했습니다: {ex.Message}", 
-                              "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                CustomDialogHelper.ShowMessageBox(this, $"Error saving font settings: {ex.Message}", 
+                              "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -585,10 +602,10 @@ namespace TotalCommander
 
         private void InitializeMenus()
         {
-            // 기존 메뉴(mnuMain)에 메뉴 항목 추가
+            // Add menu items to existing menu (mnuMain)
             if (configurationToolStripMenuItem != null)
             {
-                // User Execute Options 메뉴 항목 추가 (아직 없다면)
+                // Add User Execute Options menu item (if not already added)
                 bool hasUserExecuteOptions = false;
                 foreach (ToolStripItem item in configurationToolStripMenuItem.DropDownItems)
                 {
@@ -612,15 +629,15 @@ namespace TotalCommander
         {
             using (FormManageUserOptions form = new FormManageUserOptions(keySettings))
             {
-                if (form.ShowDialog(this) == DialogResult.OK)
+                if (ShowDialogCentered(form) == DialogResult.OK)
                 {
-                    // 설정이 변경되었으므로 다시 로드
+                    // Settings changed, reload again
                     KeySettings oldSettings = keySettings;
                     keySettings = KeySettings.Load();
                     
-                    // 메시지로 변경 사항 표시
-                    string message = "사용자 실행 옵션이 업데이트되었습니다.\n";
-                    message += "F5 키 설정: " + keySettings.GetActionForKey(Keys.F5);
+                    // Log message about changes without showing dialog
+                    string message = "User execute options updated.\n";
+                    message += "F5 key setting: " + keySettings.GetActionForKey(Keys.F5);
                     if (keySettings.GetActionForKey(Keys.F5) == KeyAction.UserExecute)
                     {
                         string optionName = keySettings.GetUserExecuteOptionNameForKey(Keys.F5);
@@ -628,11 +645,11 @@ namespace TotalCommander
                         UserExecuteOption option = keySettings.GetUserExecuteOptionByName(optionName);
                         if (option != null)
                         {
-                            message += $"\n실행 파일: {option.ExecutablePath}";
-                            message += $"\n매개변수: {option.Parameters}";
+                            message += $"\nExecutable path: {option.ExecutablePath}";
+                            message += $"\nParameters: {option.Parameters}";
                         }
                     }
-                    MessageBox.Show(message, "설정 업데이트", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Logger.Information(message);
                 }
             }
         }
@@ -641,15 +658,15 @@ namespace TotalCommander
         {
             using (FormKeySettings form = new FormKeySettings(keySettings))
             {
-                if (form.ShowDialog(this) == DialogResult.OK)
+                if (ShowDialogCentered(form) == DialogResult.OK)
                 {
-                    // 설정이 변경되었으므로 다시 로드
+                    // Settings changed, reload again
                     KeySettings oldSettings = keySettings;
                     keySettings = KeySettings.Load();
                     
-                    // 메시지로 변경 사항 표시
-                    string message = "기능 키 설정이 업데이트되었습니다.\n";
-                    message += "F5 키 설정: " + keySettings.GetActionForKey(Keys.F5);
+                    // Log message about changes without showing dialog
+                    string message = "Function key settings updated.\n";
+                    message += "F5 key setting: " + keySettings.GetActionForKey(Keys.F5);
                     if (keySettings.GetActionForKey(Keys.F5) == KeyAction.UserExecute)
                     {
                         string optionName = keySettings.GetUserExecuteOptionNameForKey(Keys.F5);
@@ -657,19 +674,19 @@ namespace TotalCommander
                         UserExecuteOption option = keySettings.GetUserExecuteOptionByName(optionName);
                         if (option != null)
                         {
-                            message += $"\n실행 파일: {option.ExecutablePath}";
-                            message += $"\n매개변수: {option.Parameters}";
+                            message += $"\nExecutable path: {option.ExecutablePath}";
+                            message += $"\nParameters: {option.Parameters}";
                         }
                     }
-                    MessageBox.Show(message, "설정 업데이트", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Logger.Information(message);
                 }
             }
         }
 
-        // 이동 관련 메서드들
+        // Move-related methods
         private void GoBack()
         {
-            // 현재 활성화된 탐색기 패널 가져오기
+            // Get active explorer panel
             ShellBrowser activeExplorer = GetActiveExplorer();
             if (activeExplorer != null)
             {
@@ -679,7 +696,7 @@ namespace TotalCommander
 
         private void GoForward()
         {
-            // 현재 활성화된 탐색기 패널 가져오기
+            // Get active explorer panel
             ShellBrowser activeExplorer = GetActiveExplorer();
             if (activeExplorer != null)
             {
@@ -689,7 +706,7 @@ namespace TotalCommander
 
         private void GoToParentDirectory()
         {
-            // 현재 활성화된 탐색기 패널 가져오기
+            // Get active explorer panel
             ShellBrowser activeExplorer = GetActiveExplorer();
             if (activeExplorer != null)
             {
@@ -699,12 +716,12 @@ namespace TotalCommander
 
         private ShellBrowser GetActiveExplorer()
         {
-            // 현재 활성화된 탐색기 패널 반환
-            // 왼쪽 패널이 포커스를 가지고 있으면 왼쪽, 아니면 오른쪽 반환
+            // Return active explorer panel
+            // If left panel has focus, return left, otherwise return right
             return shellBrowser_Left.Focused ? shellBrowser_Left : shellBrowser_Right;
         }
 
-        // 폰트 설정을 불러오는 메서드
+        // Method to load font settings
         private void LoadFontSettings()
         {
             try
@@ -723,7 +740,7 @@ namespace TotalCommander
                     bool isStrikeout = false;
                     bool applyToStatusBar = true;
 
-                    // XML 파일에서 폰트 설정 읽기
+                    // Read font settings from XML file
                     XmlDocument doc = new XmlDocument();
                     doc.Load(fontSettingsPath);
 
@@ -755,21 +772,21 @@ namespace TotalCommander
                     if (applyToStatusBarNode != null)
                         applyToStatusBar = bool.Parse(applyToStatusBarNode.InnerText);
 
-                    // 폰트 스타일 설정
+                    // Set font style
                     FontStyle style = FontStyle.Regular;
                     if (isBold) style |= FontStyle.Bold;
                     if (isItalic) style |= FontStyle.Italic;
                     if (isUnderline) style |= FontStyle.Underline;
                     if (isStrikeout) style |= FontStyle.Strikeout;
 
-                    // 폰트 생성 및 적용
+                    // Create and apply font
                     try
                     {
                         currentAppliedFont = new Font(fontFamilyName, fontSize, style);
                         shellBrowser_Left.ApplyFont(currentAppliedFont);
                         shellBrowser_Right.ApplyFont(currentAppliedFont);
                         
-                        // 하단 상태창 폰트 설정
+                        // Set status bar font
                         if (applyToStatusBar)
                         {
                             shellBrowser_Left.ApplyStatusBarFont(currentAppliedFont);
@@ -778,33 +795,33 @@ namespace TotalCommander
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine("폰트 적용 오류: " + ex.Message);
-                        // 기본 폰트 사용
+                        System.Diagnostics.Debug.WriteLine("Font application error: " + ex.Message);
+                        // Use default font
                         currentAppliedFont = SystemFonts.DefaultFont;
                     }
                 }
                 else
                 {
-                    // 파일이 없으면 기본 폰트 사용
+                    // If file doesn't exist, use default font
                     currentAppliedFont = SystemFonts.DefaultFont;
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("폰트 설정 로드 오류: " + ex.Message);
-                // 오류 시 기본 폰트 사용
+                System.Diagnostics.Debug.WriteLine("Font settings load error: " + ex.Message);
+                // Use default font if error occurs
                 currentAppliedFont = SystemFonts.DefaultFont;
             }
         }
 
-        // 컬럼 너비 변경 이벤트 핸들러
+        // Column width changed event handler
         private void Browser_ColumnWidthChanged(object sender, EventArgs e)
         {
-            // 컬럼 너비 변경 시 설정 저장
+            // Save settings when column width changes
             SaveColumnSettings();
         }
         
-        // 컬럼 설정을 저장하는 메서드
+        // Method to save column settings
         private void SaveColumnSettings()
         {
             try
@@ -812,29 +829,29 @@ namespace TotalCommander
                 string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 string tcFolder = Path.Combine(appDataFolder, "TotalCommander");
                 
-                // 디렉토리가 없으면 생성
+                // Create directory if it doesn't exist
                 if (!Directory.Exists(tcFolder))
                     Directory.CreateDirectory(tcFolder);
                     
                 string columnSettingsPath = Path.Combine(tcFolder, "ColumnSettings.xml");
                 
-                // 왼쪽, 오른쪽 패널의 컬럼 너비 가져오기
+                // Get column widths from left/right panels
                 Dictionary<int, int> leftColumnWidths = shellBrowser_Left.GetColumnWidths();
                 Dictionary<int, int> rightColumnWidths = shellBrowser_Right.GetColumnWidths();
                 
-                // 분할 위치(SplitterDistance) 가져오기
+                // Get splitter distances
                 int leftSplitterDistance = shellBrowser_Left.GetSplitterDistance();
                 int rightSplitterDistance = shellBrowser_Right.GetSplitterDistance();
                 
-                // 컬럼 정보 XML로 저장
+                // Save column information as XML
                 using (StreamWriter writer = new StreamWriter(columnSettingsPath))
                 {
                     writer.WriteLine("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
                     writer.WriteLine("<ColumnSettings>");
                     
-                    // 왼쪽 패널 컬럼 설정
+                    // Left panel column settings
                     writer.WriteLine("  <LeftPanel>");
-                    // 분할 위치 저장
+                    // Save splitter distance
                     writer.WriteLine($"    <SplitterDistance>{leftSplitterDistance}</SplitterDistance>");
                     foreach (var column in leftColumnWidths)
                     {
@@ -842,9 +859,9 @@ namespace TotalCommander
                     }
                     writer.WriteLine("  </LeftPanel>");
                     
-                    // 오른쪽 패널 컬럼 설정
+                    // Right panel column settings
                     writer.WriteLine("  <RightPanel>");
-                    // 분할 위치 저장
+                    // Save splitter distance
                     writer.WriteLine($"    <SplitterDistance>{rightSplitterDistance}</SplitterDistance>");
                     foreach (var column in rightColumnWidths)
                     {
@@ -855,16 +872,16 @@ namespace TotalCommander
                     writer.WriteLine("</ColumnSettings>");
                 }
                 
-                // 디버깅용 메시지 (주석 처리)
-                // System.Diagnostics.Debug.WriteLine("컬럼 설정이 저장되었습니다: " + columnSettingsPath);
+                // Debug message (commented out)
+                // System.Diagnostics.Debug.WriteLine("Column settings saved: " + columnSettingsPath);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("컬럼 설정 저장 오류: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Column settings save error: " + ex.Message);
             }
         }
         
-        // 컬럼 설정을 불러오는 메서드
+        // Method to load column settings
         private void LoadColumnSettings()
         {
             try
@@ -875,26 +892,26 @@ namespace TotalCommander
                 
                 if (File.Exists(columnSettingsPath))
                 {
-                    // 왼쪽, 오른쪽 패널의 컬럼 너비를 저장할 딕셔너리
+                    // Dictionary to store column widths for left/right panels
                     Dictionary<int, int> leftColumnWidths = new Dictionary<int, int>();
                     Dictionary<int, int> rightColumnWidths = new Dictionary<int, int>();
                     
-                    // 분할 위치 기본값
+                    // Default splitter distances
                     int leftSplitterDistance = 0;
                     int rightSplitterDistance = 0;
                     
-                    // XML 파일 로드
+                    // Load XML file
                     XmlDocument doc = new XmlDocument();
                     doc.Load(columnSettingsPath);
                     
-                    // 왼쪽 패널 분할 위치 로드
+                    // Load left panel splitter distance
                     XmlNode leftSplitterNode = doc.SelectSingleNode("//LeftPanel/SplitterDistance");
                     if (leftSplitterNode != null && int.TryParse(leftSplitterNode.InnerText, out leftSplitterDistance))
                     {
                         shellBrowser_Left.SetSplitterDistance(leftSplitterDistance);
                     }
                     
-                    // 왼쪽 패널 컬럼 설정 로드
+                    // Load left panel column settings
                     XmlNodeList leftColumns = doc.SelectNodes("//LeftPanel/Column");
                     if (leftColumns != null)
                     {
@@ -909,14 +926,14 @@ namespace TotalCommander
                         }
                     }
                     
-                    // 오른쪽 패널 분할 위치 로드
+                    // Load right panel splitter distance
                     XmlNode rightSplitterNode = doc.SelectSingleNode("//RightPanel/SplitterDistance");
                     if (rightSplitterNode != null && int.TryParse(rightSplitterNode.InnerText, out rightSplitterDistance))
                     {
                         shellBrowser_Right.SetSplitterDistance(rightSplitterDistance);
                     }
                     
-                    // 오른쪽 패널 컬럼 설정 로드
+                    // Load right panel column settings
                     XmlNodeList rightColumns = doc.SelectNodes("//RightPanel/Column");
                     if (rightColumns != null)
                     {
@@ -931,24 +948,24 @@ namespace TotalCommander
                         }
                     }
                     
-                    // 설정 적용
+                    // Apply settings
                     shellBrowser_Left.ApplyColumnWidths(leftColumnWidths);
                     shellBrowser_Right.ApplyColumnWidths(rightColumnWidths);
                     
-                    // 디버깅용 메시지 (주석 처리)
-                    // System.Diagnostics.Debug.WriteLine("컬럼 설정이 로드되었습니다: " + columnSettingsPath);
+                    // Debug message (commented out)
+                    // System.Diagnostics.Debug.WriteLine("Column settings loaded: " + columnSettingsPath);
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine("컬럼 설정 로드 오류: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("Column settings load error: " + ex.Message);
             }
         }
         
-        // 추가: SplitterDistance 변경 이벤트를 처리하는 메서드
+        // Additional: Method to handle SplitterDistance changed events
         private void SplitterDistanceChanged(object sender, SplitterEventArgs e)
         {
-            // 분할 위치가 변경되면 설정 저장
+            // Save settings when splitter distance changes
             SaveColumnSettings();
         }
 
@@ -956,123 +973,110 @@ namespace TotalCommander
         {
             try
             {
-                // 어셈블리 파일 경로 가져오기
+                // Get assembly file path
                 string assemblyPath = Assembly.GetExecutingAssembly().Location;
                 DateTime buildDateTime = File.GetLastWriteTime(assemblyPath);
                 
-                // 버전 정보 가져오기
+                // Get version information
                 Version version = Assembly.GetExecutingAssembly().GetName().Version;
                 
-                // 제목 표시줄에 빌드 일시와 버전 표시
-                this.Text = $"Total Commander - v{version} (빌드: {buildDateTime:yyyy-MM-dd HH:mm:ss})";
+                // Show build date and version in title bar
+                this.Text = $"Total Commander - v{version} (Build: {buildDateTime:yyyy-MM-dd HH:mm:ss})";
                 
-                // 로그에도 기록
-                Logger.Info($"어플리케이션 버전: {version}, 빌드 일시: {buildDateTime:yyyy-MM-dd HH:mm:ss}");
+                // Log to file
+                Logger.Information($"Application version: {version}, Build date: {buildDateTime:yyyy-MM-dd HH:mm:ss}");
             }
             catch (Exception ex)
             {
-                // 오류 발생 시 기본 제목 표시
+                // Use default title if error occurs
                 this.Text = "Total Commander";
-                Logger.Error(ex, "빌드 일시 가져오기 실패");
+                Logger.Error(ex, "Build date retrieval failed");
             }
         }
 
         /// <summary>
-        /// 한 패널에서 다른 패널로 선택된 파일/폴더 복사 (Windows Shell32 API 사용)
+        /// Copy selected files/folders between two panels (using Windows Shell32 API)
         /// </summary>
-        /// <param name="source">소스 ShellBrowser (선택된 항목이 있는 패널)</param>
-        /// <param name="destination">대상 ShellBrowser (복사할 대상 경로가 있는 패널)</param>
+        /// <param name="source">Source ShellBrowser (panel with selected items)</param>
+        /// <param name="destination">Destination ShellBrowser (panel with target path)</param>
         private void CopyBetweenPanels(ShellBrowser source, ShellBrowser destination)
         {
             try
             {
-                // 로그 기록
-                Logger.Info($"Shell32 API를 사용한 패널 간 복사 시작: {source.CurrentPath} -> {destination.CurrentPath}");
-                
-                // 선택된 항목이 없으면 종료
-                if (source.FileExplorer.SelectedIndices.Count == 0)
-                {
-                    Logger.Info("선택된 항목이 없습니다.");
+                if (source == null || destination == null)
                     return;
-                }
                 
-                // 대상 경로가 유효한지 확인
-                if (string.IsNullOrEmpty(destination.CurrentPath) || !Directory.Exists(destination.CurrentPath))
-                {
-                    Logger.Error($"대상 경로가 유효하지 않습니다: {destination.CurrentPath}");
-                    MessageBox.Show("대상 경로가 유효하지 않습니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-                
-                // 선택된 항목의 경로 가져오기
+                // Get selected files from source panel
                 List<string> selectedPaths = new List<string>();
+                
                 foreach (int index in source.FileExplorer.SelectedIndices)
                 {
-                    if (index < source.m_ShellItemInfo.Count)
+                    if (index >= 0 && index < source.m_ShellItemInfo.Count)
                     {
-                        FileSystemInfo item = source.m_ShellItemInfo[index];
-                        selectedPaths.Add(item.FullName);
+                        selectedPaths.Add(source.m_ShellItemInfo[index].FullName);
                     }
                 }
                 
                 if (selectedPaths.Count == 0)
+                    return;
+                
+                // Get destination path
+                string destPath = destination.CurrentPath;
+                if (string.IsNullOrEmpty(destPath))
                 {
-                    Logger.Info("선택된 항목이 없습니다.");
+                    CustomDialogHelper.ShowMessageBox(this, "Destination path is invalid.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
                 
-                // 복사 확인 대화상자 표시
-                using (var confirmDialog = new GUI.FormCopyConfirm(selectedPaths.ToArray(), destination.CurrentPath))
+                // Show confirmation dialog
+                FormCopyConfirm confirmDialog = new FormCopyConfirm(selectedPaths.ToArray(), destPath);
+                if (ShowDialogCentered(confirmDialog) != DialogResult.OK)
                 {
-                    if (confirmDialog.ShowDialog(this) != DialogResult.OK)
-                    {
-                        Logger.Info("사용자가 복사를 취소했습니다.");
-                        return;
-                    }
+                    return;
                 }
                 
-                // 복사 작업을 위한 ShellFileOperation 설정
+                // Set up ShellFileOperation for copying
                 ShellFileOperation fileOperation = new ShellFileOperation();
                 fileOperation.SourceFiles = selectedPaths.ToArray();
-                fileOperation.DestinationFolder = destination.CurrentPath;
+                fileOperation.DestinationFolder = destPath;
                 fileOperation.Operation = ShellFileOperation.FileOperations.FO_COPY;
                 
-                // 작업 옵션 설정 (진행 대화 상자 표시)
+                // Set operation options (show progress dialog)
                 fileOperation.OperationFlags = 
                     ShellFileOperation.ShellFileOperationFlags.FOF_ALLOWUNDO | 
                     ShellFileOperation.ShellFileOperationFlags.FOF_NOCONFIRMMKDIR;
                 
-                // 작업 실행
+                // Execute operation
                 bool success = fileOperation.DoOperation();
                 
                 if (success)
                 {
-                    // 복사 후 대상 패널 새로고침
+                    // Refresh destination panel after copy
                     destination.RefreshAll();
                     
-                    // 복사 완료 메시지
+                    // Show copy completion message
                     string message = selectedPaths.Count == 1 
-                        ? "1개 항목이 복사되었습니다." 
-                        : $"{selectedPaths.Count}개 항목이 복사되었습니다.";
+                        ? "1 item copied." 
+                        : $"{selectedPaths.Count} items copied.";
                     destination.SetStatusMessage(message);
                     
-                    Logger.Info("Shell32 API를 사용한 패널 간 복사 완료");
+                    Logger.Information("Shell32 API panel-to-panel copy completed");
                 }
                 else
                 {
-                    Logger.Error("Shell32 API를 사용한 패널 간 복사 실패");
-                    MessageBox.Show("복사 작업이 완료되지 않았습니다.", "복사 실패", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    Logger.Error("Shell32 API panel-to-panel copy failed");
+                    CustomDialogHelper.ShowMessageBox(this, "Copy operation did not complete.", "Copy Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Shell32 API를 사용한 패널 간 복사 중 오류 발생: {ex.Message}");
-                MessageBox.Show($"복사 중 오류가 발생했습니다: {ex.Message}", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Logger.Error($"Shell32 API panel-to-panel copy error: {ex.Message}");
+                CustomDialogHelper.ShowMessageBox(this, $"Copy error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         /// <summary>
-        /// Windows Shell32 API를 사용하기 위한 클래스
+        /// Windows Shell32 API class for use
         /// </summary>
         private class ShellFileOperation
         {
@@ -1125,22 +1129,22 @@ namespace TotalCommander
                 FOF_NORECURSEREPARSE = 0x8000
             }
 
-            // 소스 파일 목록
+            // Source file list
             public string[] SourceFiles { get; set; }
             
-            // 대상 폴더
+            // Destination folder
             public string DestinationFolder { get; set; }
             
-            // 작업 유형 (복사, 이동 등)
+            // Operation type (copy, move, etc.)
             public FileOperations Operation { get; set; }
             
-            // 작업 옵션 플래그
+            // Operation options flags
             public ShellFileOperationFlags OperationFlags { get; set; }
             
             /// <summary>
-            /// 파일 작업 실행
+            /// Execute file operation
             /// </summary>
-            /// <returns>성공 여부</returns>
+            /// <returns>Success status</returns>
             public bool DoOperation()
             {
                 if (SourceFiles == null || SourceFiles.Length == 0 || string.IsNullOrEmpty(DestinationFolder))
@@ -1154,34 +1158,84 @@ namespace TotalCommander
                     fileOp.hwnd = IntPtr.Zero;
                     fileOp.wFunc = Operation;
                     
-                    // 소스 파일 목록을 쌍반점(null)으로 구분된 단일 문자열로 변환
+                    // Convert source file list to single string separated by null characters
                     StringBuilder sourceBuilder = new StringBuilder();
                     foreach (string file in SourceFiles)
                     {
                         sourceBuilder.Append(file);
-                        sourceBuilder.Append('\0'); // null 문자로 파일 구분
+                        sourceBuilder.Append('\0'); // null character to separate files
                     }
-                    sourceBuilder.Append('\0'); // 마지막에 추가 null 문자
+                    sourceBuilder.Append('\0'); // Add final null character
                     fileOp.pFrom = sourceBuilder.ToString();
                     
-                    // 대상 폴더
-                    fileOp.pTo = DestinationFolder + '\0' + '\0'; // 폴더에도 이중 null 문자 필요
+                    // Destination folder
+                    fileOp.pTo = DestinationFolder + '\0' + '\0'; // Need double null characters for folder
                     
-                    // 작업 옵션
+                    // Operation options
                     fileOp.fFlags = OperationFlags;
                     
-                    // 작업 실행
+                    // Execute operation
                     int result = SHFileOperation(ref fileOp);
                     
-                    // 결과 확인 (0은 성공)
+                    // Result check (0 is success)
                     return result == 0 && !fileOp.fAnyOperationsAborted;
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"Shell32 API 오류: {ex.Message}");
+                    Logger.Error($"Shell32 API error: {ex.Message}");
                     return false;
                 }
             }
         }
+
+        // Add this method to the class
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            
+            // Subscribe to Application.Idle event to intercept form opening
+            Application.AddMessageFilter(new FormCenteringMessageFilter(this));
+        }
+        
+        /// <summary>
+        /// Shows a dialog centered on the main form
+        /// </summary>
+        /// <param name="dialog">The dialog to show</param>
+        /// <returns>The dialog result</returns>
+        public DialogResult ShowDialogCentered(Form dialog)
+        {
+            return FormHelper.ShowDialogCentered(dialog, this);
+        }
+    }
+    
+    /// <summary>
+    /// Message filter to intercept form creation and center all forms
+    /// </summary>
+    public class FormCenteringMessageFilter : IMessageFilter
+    {
+        private Form _mainForm;
+        
+        public FormCenteringMessageFilter(Form mainForm)
+        {
+            _mainForm = mainForm;
+        }
+        
+        public bool PreFilterMessage(ref Message m)
+        {
+            // WM_SHOWWINDOW message
+            if (m.Msg == 0x0018)
+            {
+                // Try to get the form from the handle
+                Control control = Control.FromHandle(m.HWnd);
+                if (control is Form form && form != _mainForm && form.Owner == null)
+                {
+                    // Set owner and center
+                    form.Owner = _mainForm;
+                    TotalCommander.FormHelper.CenterFormOnParentOrScreen(form);
+                }
+            }
+            return false;
+        }
     }
 }
+

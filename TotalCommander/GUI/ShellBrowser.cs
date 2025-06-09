@@ -10,6 +10,11 @@ using System.Diagnostics;
 using Microsoft.VisualBasic.FileIO;
 using System.Text;
 using System.Runtime.InteropServices;
+using TotalCommander;
+using System.Collections.Specialized;
+using System.Threading;
+using System.Xml;
+using System.Text.RegularExpressions;
 
 namespace TotalCommander.GUI
 {
@@ -56,23 +61,23 @@ namespace TotalCommander.GUI
         public Label BottomStatusLabel => lblBotStatus;
         
         /// <summary>
-        /// 파일 탐색기 컨트롤에 대한 접근자
+        /// File explorer control accessor
         /// </summary>
         public ListView FileExplorer => browser;
         #endregion
 
         /// <summary>
-        /// 상태 표시줄에 메시지를 표시합니다.
+        /// Displays a message in the status bar.
         /// </summary>
-        /// <param name="message">표시할 메시지</param>
+        /// <param name="message">Message to display</param>
         public void SetStatusMessage(string message)
         {
-            // 상태 메시지 설정
+            // Set status message
             if (lblBotStatus != null)
             {
                 lblBotStatus.Text = message;
                 
-                // StatusChanged 이벤트 발생
+                // Trigger StatusChanged event
                 StatusChanged?.Invoke(this, new StatusChangedEventArgs(message));
             }
         }
@@ -97,10 +102,10 @@ namespace TotalCommander.GUI
             InitTxtPath();
             InitPassingFocus();
             
-            // 레이아웃 조정
+            // Adjust layout
             AdjustLayout();
             
-            // 초기화 후 첫 번째 항목 선택
+            // Select first item after initialization
             SelectFirstItem();
         }
 
@@ -186,7 +191,7 @@ namespace TotalCommander.GUI
             navigationPane.NodeMouseDoubleClick += NavigationPane_NodeMouseDoubleClick;
             navigationPane.KeyDown += TvwNavigationPane_KeyDown;
             
-            // 경로 표시 영역이 숨겨지므로 내비게이션 창이 전체 높이를 사용하도록 설정
+            // Set navigation pane to use full height since path display area is hidden
             navigationPane.Dock = DockStyle.Fill;
         }
 
@@ -206,7 +211,7 @@ namespace TotalCommander.GUI
                 m_History.Add(path);
                 RefreshDisksBrowser(CurrentPath, disksBrowser.SelectedItem.ToString());
                 
-                // 첫 번째 항목 선택
+                // Select first item
                 SelectFirstItem();
             }
             else if (Directory.Exists(path))
@@ -231,18 +236,18 @@ namespace TotalCommander.GUI
         #region Textbox presents Current Path
         private void InitTxtPath()
         {
-            // 주소표시줄 초기화
-            txtPath.Visible = true; // 주소표시줄을 항상 표시
+            // Initialize address bar
+            txtPath.Visible = true; // Always show address bar
             txtPath.Text = CurrentPath;
             txtPath.LostFocus += TxtPath_LostFocus;
             txtPath.KeyDown += TxtPath_KeyDown;
             
-            // Tab 키로 접근되지 않도록 설정
+            // Set not accessible by Tab key
             txtPath.TabStop = false;
         }
 
         /// <summary>
-        /// 주소표시줄에 포커스를 설정합니다.
+        /// Sets focus to the address bar.
         /// </summary>
         public void FocusAddressBar()
         {
@@ -253,7 +258,7 @@ namespace TotalCommander.GUI
 
         void TxtPath_LostFocus(object sender, EventArgs e)
         {
-            // 포커스 잃을 때 현재 경로로 업데이트
+            // Update to current path when focus is lost
             txtPath.Text = CurrentPath;
         }
 
@@ -278,21 +283,27 @@ namespace TotalCommander.GUI
                             }
                             catch (Exception ex)
                             {
-                                MessageBox.Show("파일을 열 수 없습니다: " + ex.Message, "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                MessageBox.Show(StringResources.GetString("FileOpenError", ex.Message), 
+                                               StringResources.GetString("Error"), 
+                                               MessageBoxButtons.OK, 
+                                               MessageBoxIcon.Error);
                             }
                         }
                         else
                         {
-                            MessageBox.Show("경로를 찾을 수 없습니다: " + path, "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            MessageBox.Show(StringResources.GetString("PathNotFound", path), 
+                                           StringResources.GetString("Error"), 
+                                           MessageBoxButtons.OK, 
+                                           MessageBoxIcon.Error);
                         }
                     }
-                    // 파일 브라우저에 포커스 설정
+                    // Set focus to file browser
                     FocusFileBrowser();
                     e.Handled = true;
                     e.SuppressKeyPress = true;
                     break;
                 case Keys.Escape:
-                    // ESC 키를 누르면 파일 브라우저로 포커스 이동
+                    // Move focus to file browser when ESC key is pressed
                     FocusFileBrowser();
                     e.Handled = true;
                     e.SuppressKeyPress = true;
@@ -325,11 +336,11 @@ namespace TotalCommander.GUI
             browser.RetrieveVirtualItem += Browser_RetrieveVirtualItem;
             browser.SearchForVirtualItem += Browser_SearchForVirtualItem;
             
-            // 이벤트 핸들러 등록
-            browser.SelectedIndexChanged -= Browser_SelectedIndexChanged; // 기존에 등록된 핸들러가 있으면 제거
+            // Register event handlers
+            browser.SelectedIndexChanged -= Browser_SelectedIndexChanged; // Remove previously registered handler if exists
             browser.SelectedIndexChanged += Browser_SelectedIndexChanged;
             
-            // 가상 모드에서 선택 변경을 추가로 감지하기 위한 이벤트
+            // Additional events to detect selection changes in virtual mode
             browser.MouseClick -= Browser_MouseClick;
             browser.MouseClick += Browser_MouseClick;
             browser.KeyUp -= Browser_KeyUp;
@@ -405,7 +416,7 @@ namespace TotalCommander.GUI
             switch (flag)
             {
                 // Neither item is a folder => Compare names
-                case 0: goto case 3; break;
+                case 0: goto case 3;
                 // A is a folder, but B isn't => A < B
                 case 1: result = -1; break;
                 // B is a folder, but A isn't => A > B
@@ -551,27 +562,25 @@ namespace TotalCommander.GUI
                 }
                 catch (ArgumentException)
                 {
-                    warningMsg = "The path is not valid for one of the following reasons:" +
-                    "it is a zero-length string; it contains only white space; it contains" +
-                    @"invalid characters; or it is a device path (starts with \\.\).";
+                    warningMsg = StringResources.GetString("InvalidPathReason", e.Label);
                 }
                 catch (FileNotFoundException)
                 {
-                    warningMsg = "This file or directory not exists.";
+                    warningMsg = StringResources.GetString("FileNotFound");
                 }
                 catch (PathTooLongException)
                 {
-                    warningMsg = "The file name exceeds system-defined maximum length.";
+                    warningMsg = StringResources.GetString("FileNameTooLong");
                 }
-                catch (IOException) { warningMsg = "The new file name already exists."; }
-                catch (NotSupportedException) { warningMsg = "Invalid name"; }
-                catch (UnauthorizedAccessException) { warningMsg = "You don't have enough permission on this file or folder."; }
+                catch (IOException) { warningMsg = StringResources.GetString("FileAlreadyExists", e.Label); }
+                catch (NotSupportedException) { warningMsg = StringResources.GetString("InvalidName"); }
+                catch (UnauthorizedAccessException) { warningMsg = StringResources.GetString("PermissionDenied"); }
                 finally
                 {
                     if (!string.IsNullOrEmpty(warningMsg))
                     {
                         e.CancelEdit = true;
-                        MessageBox.Show(warningMsg, "Total Commander", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show(warningMsg, StringResources.GetString("Warning"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
                 }
             }
@@ -626,12 +635,10 @@ namespace TotalCommander.GUI
                 catch (OperationCanceledException) { }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(ex.StackTrace);
+                    MessageBox.Show(StringResources.GetString("CopyError", ex.Message), StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 finally { RefreshListView(); }
             }
-
-
         }
 
         void Browser_DragEnter(object sender, DragEventArgs e)
@@ -668,7 +675,7 @@ namespace TotalCommander.GUI
 
         void Browser_KeyDown(object sender, KeyEventArgs e)
         {
-            // 키 이벤트 로깅 추가
+            // Add key event logging
             Logger.Debug($"ShellBrowser.Browser_KeyDown: KeyCode={e.KeyCode}, KeyData={e.KeyData}, Handled={e.Handled}");
             
             switch (e.KeyData)
@@ -723,7 +730,7 @@ namespace TotalCommander.GUI
                 case Keys.Control | Keys.Shift | Keys.N:
                     CreateNewFolder();
                     break;
-                // Space 키는 FileBrowser 클래스에서 직접 처리합니다.
+                // Space key is handled directly in the FileBrowser class.
             }
         }
 
@@ -744,8 +751,8 @@ namespace TotalCommander.GUI
 
         private void Browser_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // 디버깅 메시지 (필요시 주석 해제)
-            // MessageBox.Show("선택 변경됨!");
+            // Debug message (uncomment if needed)
+            // MessageBox.Show("Selection changed!");
 
             if (browser.SelectedIndices.Count == 0)
             {
@@ -777,15 +784,15 @@ namespace TotalCommander.GUI
             string statusText;
             if (selectedFiles > 0 && selectedDirs > 0)
             {
-                statusText = $"Selected {selectedFiles} file(s), {selectedDirs} dir(s) | Total size: {FormatBytes(totalSize)}";
+                statusText = StringResources.GetString("SelectedFilesDirs", selectedFiles, selectedDirs, FormatBytes(totalSize));
             }
             else if (selectedFiles > 0)
             {
-                statusText = $"Selected {selectedFiles} file(s) | Total size: {FormatBytes(totalSize)}";
+                statusText = StringResources.GetString("SelectedFiles", selectedFiles, FormatBytes(totalSize));
             }
             else if (selectedDirs > 0)
             {
-                statusText = $"Selected {selectedDirs} dir(s)";
+                statusText = StringResources.GetString("SelectedDirs", selectedDirs);
             }
             else
             {
@@ -793,10 +800,10 @@ namespace TotalCommander.GUI
                 return;
             }
 
-            // 먼저 직접 레이블 업데이트 
+            // First update the label directly 
             lblBotStatus.Text = statusText;
             
-            // 그리고 이벤트도 발생시킴
+            // Then trigger the event
             StatusChanged?.Invoke(this, new StatusChangedEventArgs(statusText));
         }
 
@@ -808,12 +815,12 @@ namespace TotalCommander.GUI
                 {
                     int files = m_ShellItemInfo.Count(f => f is FileInfo);
                     int folders = m_ShellItemInfo.Count(f => f is DirectoryInfo);
-                    string statusText = $"{files} File(s), {folders} Dir(s)";
+                    string statusText = StringResources.GetString("FolderSummary", files, folders);
                     StatusChanged?.Invoke(this, new StatusChangedEventArgs(statusText));
                 }
                 catch (Exception)
                 {
-                    string errorText = "Error reading folder contents";
+                    string errorText = StringResources.GetString("ErrorReadingFolderContents");
                     StatusChanged?.Invoke(this, new StatusChangedEventArgs(errorText));
                 }
             }
@@ -877,10 +884,10 @@ namespace TotalCommander.GUI
                 SetStorageStatus(drive);
                 ProcessFileOrFolderPath(drive.Name);
                 
-                // 첫 번째 항목 선택
+                // Select first item
                 SelectFirstItem();
                 
-                // 폴더 목록창 동기화
+                // Synchronize folder tree
                 SyncNavigationPaneWithCurrentPath();
             }
         }
@@ -908,194 +915,142 @@ namespace TotalCommander.GUI
             }
         }
 
-        delegate void DeleteFileDel(string file, UIOption showUI, RecycleOption recycle, UICancelOption onUserCancel);
         public async void DeleteSelectedItems(RecycleOption recycle)
         {
-            if (browser.SelectedIndices.Count == 0)
-                return;
-
+            // Get selected items
             List<FileSystemInfo> itemsToDelete = new List<FileSystemInfo>();
-            foreach (int selectedIndex in browser.SelectedIndices)
+            foreach (int index in browser.SelectedIndices)
             {
-                if (selectedIndex >= 0 && selectedIndex < m_ShellItemInfo.Count) // 인덱스 유효성 검사
+                if (index >= 0 && index < m_ShellItemInfo.Count)
                 {
-                    itemsToDelete.Add(m_ShellItemInfo[selectedIndex]);
+                    itemsToDelete.Add(m_ShellItemInfo[index]);
                 }
             }
-
-            if (itemsToDelete.Count == 0) // 실제로 삭제할 항목이 없는 경우
-            {
-                return;
-            }
-
+            
             try
             {
-                // 강제 삭제(영구 삭제)와 일반 삭제(휴지통으로 이동) 구분 처리
-                if (recycle == RecycleOption.DeletePermanently)
+                if (itemsToDelete.Count > 0)
                 {
-                    // 강제 삭제일 경우 Shell32 API 사용하여 한 번에 모든 파일 삭제
-                    DeleteFilesUsingShellAPI(itemsToDelete, recycle == RecycleOption.SendToRecycleBin);
-                }
-                else
-                {
-                    // 일반 삭제일 경우 사용자 정의 확인 대화 상자 표시
-                    string confirmMessage = itemsToDelete.Count == 1
-                        ? $"'{itemsToDelete[0].Name}' 파일을 삭제하시겠습니까?"
-                        : $"{itemsToDelete.Count}개의 항목을 삭제하시겠습니까?";
+                    // 삭제 확인 메시지 생성
+                    string confirmMessage = itemsToDelete.Count == 1 
+                        ? StringResources.GetString("DeleteFile", itemsToDelete[0].Name)
+                        : StringResources.GetString("DeleteMultiple", itemsToDelete.Count);
                     
-                    DialogResult result = MessageBox.Show(
+                    // CustomDialogHelper를 사용하여 중앙에 표시되는 확인 대화 상자 표시
+                    DialogResult result = CustomDialogHelper.ShowMessageBox(
+                        this.FindForm(),
                         confirmMessage,
-                        "삭제 확인",
+                        StringResources.GetString("DeleteConfirmTitle"),
                         MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question,
-                        MessageBoxDefaultButton.Button2);
+                        MessageBoxIcon.Question);
                     
                     if (result != DialogResult.Yes)
                     {
                         return;
                     }
 
-                    // 항상 확인 대화 상자를 표시하기 위해 UIOption.AllDialogs 사용
-                    UIOption uiOption = UIOption.AllDialogs;
-                    UICancelOption cancelOption = UICancelOption.ThrowException;
-
-                    List<Task> taskList = new List<Task>();
-                    foreach (FileSystemInfo itemInfo in itemsToDelete)
+                    // 삭제 진행 상황을 표시할 커스텀 대화 상자 생성
+                    Form mainForm = this.FindForm();
+                    using (var progressForm = new Form())
                     {
-                        string fileName = itemInfo.FullName;
-                        DeleteFileDel deleteFunc = null;
-                        if (File.Exists(fileName))
-                            deleteFunc = FileSystem.DeleteFile;
-                        else if (Directory.Exists(fileName))
-                            deleteFunc = FileSystem.DeleteDirectory;
-
-                        if (deleteFunc != null)
+                        progressForm.Text = StringResources.GetString("DeletingFiles");
+                        progressForm.StartPosition = FormStartPosition.Manual;
+                        progressForm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                        progressForm.MaximizeBox = false;
+                        progressForm.MinimizeBox = false;
+                        progressForm.Size = new Size(400, 120);
+                        progressForm.ShowInTaskbar = false;
+                        
+                        // 진행 상황 표시줄 추가
+                        ProgressBar progressBar = new ProgressBar();
+                        progressBar.Dock = DockStyle.None;
+                        progressBar.Location = new Point(20, 20);
+                        progressBar.Size = new Size(360, 23);
+                        progressBar.Style = ProgressBarStyle.Marquee;
+                        progressForm.Controls.Add(progressBar);
+                        
+                        // 상태 라벨 추가
+                        Label statusLabel = new Label();
+                        statusLabel.AutoSize = true;
+                        statusLabel.Location = new Point(20, 50);
+                        statusLabel.Text = StringResources.GetString("DeletingItemsProgress");
+                        progressForm.Controls.Add(statusLabel);
+                        
+                        // 폼 중앙에 배치
+                        if (mainForm != null)
                         {
-                            // UIOption.AllDialogs와 UICancelOption.ThrowException 사용
-                            Task task = Task.Run(() => deleteFunc(fileName, uiOption, recycle, cancelOption));
-                            taskList.Add(task);
+                            FormHelper.CenterFormOnParentOrScreen(progressForm);
+                            progressForm.Owner = mainForm;
                         }
-                    }
-
-                    foreach (Task currentTask in taskList)
-                    {
-                        try
+                        
+                        // 비동기 작업 시작
+                        var deleteTask = Task.Run(() => 
                         {
-                            await currentTask;
-                        }
-                        catch (OperationCanceledException) { }
-                        catch (Exception ex)
-                        {
-                            MessageBox.Show(ex.StackTrace);
-                        }
+                            List<Task> taskList = new List<Task>();
+                            foreach (FileSystemInfo itemInfo in itemsToDelete)
+                            {
+                                string fileName = itemInfo.FullName;
+                                
+                                Task task = Task.Run(() => 
+                                {
+                                    try
+                                    {
+                                        if (File.Exists(fileName))
+                                        {
+                                            if (recycle == RecycleOption.SendToRecycleBin)
+                                                FileSystem.DeleteFile(fileName, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.DoNothing);
+                                            else
+                                                File.Delete(fileName);
+                                        }
+                                        else if (Directory.Exists(fileName))
+                                        {
+                                            if (recycle == RecycleOption.SendToRecycleBin)
+                                                FileSystem.DeleteDirectory(fileName, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.DoNothing);
+                                            else
+                                                Directory.Delete(fileName, true);
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        progressForm.Invoke(new Action(() => 
+                                        {
+                                            statusLabel.Text = StringResources.GetString("DeletionError", ex.Message);
+                                        }));
+                                    }
+                                });
+                                
+                                taskList.Add(task);
+                            }
+                            
+                            try
+                            {
+                                Task.WaitAll(taskList.ToArray());
+                            }
+                            catch (Exception ex)
+                            {
+                                progressForm.Invoke(new Action(() => 
+                                {
+                                    statusLabel.Text = StringResources.GetString("DeletionError", ex.Message);
+                                }));
+                            }
+                            
+                            // 작업 완료 후 폼 닫기
+                            progressForm.Invoke(new Action(() => 
+                            {
+                                progressForm.Close();
+                            }));
+                        });
+                        
+                        // 대화 상자 표시 및 삭제 작업 완료 대기
+                        await Task.Run(() => progressForm.ShowDialog());
                     }
                 }
             }
             finally
             {
-                // 작업 완료 후 목록 새로고침
+                // Refresh the list after operation completes
                 RefreshListView();
             }
-        }
-
-        /// <summary>
-        /// Shell32 API를 사용하여 여러 파일을 한 번에 삭제
-        /// </summary>
-        private void DeleteFilesUsingShellAPI(List<FileSystemInfo> items, bool sendToRecycleBin)
-        {
-            try
-            {
-                // 삭제할 파일 경로 목록 생성
-                string[] filePaths = items.Select(item => item.FullName).ToArray();
-
-                // SHFileOperation 구조체 설정
-                ShellFileOperationStruct fileOp = new ShellFileOperationStruct();
-                fileOp.hwnd = this.Handle;
-                fileOp.wFunc = FileOperations.FO_DELETE;
-                
-                // 소스 파일 목록을 쌍반점(null)으로 구분된 단일 문자열로 변환
-                StringBuilder sourceBuilder = new StringBuilder();
-                foreach (string file in filePaths)
-                {
-                    sourceBuilder.Append(file);
-                    sourceBuilder.Append('\0'); // null 문자로 파일 구분
-                }
-                sourceBuilder.Append('\0'); // 마지막에 추가 null 문자
-                fileOp.pFrom = sourceBuilder.ToString();
-                fileOp.pTo = null;
-                
-                // 작업 옵션 설정
-                ShellFileOperationFlags flags = ShellFileOperationFlags.FOF_NOCONFIRMMKDIR | ShellFileOperationFlags.FOF_WANTMAPPINGHANDLE;
-
-                // 휴지통으로 이동 여부에 따라 플래그 설정
-                if (sendToRecycleBin)
-                {
-                    flags |= ShellFileOperationFlags.FOF_ALLOWUNDO;
-                }
-                else
-                {
-                    // 영구 삭제일 경우 경고 대화 상자 표시
-                    flags |= ShellFileOperationFlags.FOF_WANTNUKEWARNING;
-                }
-
-                fileOp.fFlags = flags;
-                
-                // 파일 작업 실행
-                SHFileOperation(ref fileOp);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"파일 삭제 중 오류 발생: {ex.Message}", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-        private static extern int SHFileOperation([System.Runtime.InteropServices.In, System.Runtime.InteropServices.Out] ref ShellFileOperationStruct lpFileOp);
-
-        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-        private struct ShellFileOperationStruct
-        {
-            public IntPtr hwnd;
-            public FileOperations wFunc;
-            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
-            public string pFrom;
-            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
-            public string pTo;
-            public ShellFileOperationFlags fFlags;
-            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
-            public bool fAnyOperationsAborted;
-            public IntPtr hNameMappings;
-            [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)]
-            public string lpszProgressTitle;
-        }
-
-        private enum FileOperations : uint
-        {
-            FO_MOVE = 0x0001,
-            FO_COPY = 0x0002,
-            FO_DELETE = 0x0003,
-            FO_RENAME = 0x0004
-        }
-
-        [System.Flags]
-        private enum ShellFileOperationFlags : ushort
-        {
-            FOF_MULTIDESTFILES = 0x0001,
-            FOF_CONFIRMMOUSE = 0x0002,
-            FOF_SILENT = 0x0004,
-            FOF_RENAMEONCOLLISION = 0x0008,
-            FOF_NOCONFIRMATION = 0x0010,
-            FOF_WANTMAPPINGHANDLE = 0x0020,
-            FOF_ALLOWUNDO = 0x0040,
-            FOF_FILESONLY = 0x0080,
-            FOF_SIMPLEPROGRESS = 0x0100,
-            FOF_NOCONFIRMMKDIR = 0x0200,
-            FOF_NOERRORUI = 0x0400,
-            FOF_NOCOPYSECURITYATTRIBS = 0x0800,
-            FOF_NORECURSION = 0x1000,
-            FOF_NO_CONNECTED_ELEMENTS = 0x2000,
-            FOF_WANTNUKEWARNING = 0x4000,
-            FOF_NORECURSEREPARSE = 0x8000
         }
 
         public void CutSelectedItems()
@@ -1120,8 +1075,9 @@ namespace TotalCommander.GUI
                 {
                     CanCut = false;
                     string destPath = CurrentPath;
-                    var dialog = new FormProgressCopy(files, destPath, CanCut);
-                    dialog.ShowDialog();
+                    var copyProcessor = new FormProgressCopy(files, destPath, CanCut);
+                    // 대화 상자를 표시하지 않고 백그라운드에서 작업 실행
+                    copyProcessor.ProcessFilesInBackground();
                     RefreshListView();
                 }
             }
@@ -1129,35 +1085,35 @@ namespace TotalCommander.GUI
 
         private void RefreshListView()
         {
-            // 화면 갱신 일시 중지
+            // Pause screen updates
             browser.BeginUpdate();
             
             try
             {
-                // 캐시 초기화
+                // Initialize cache
                 m_ListItemCache = null;
                 m_FirstItem = 0;
                 
-                // 현재 경로 다시 처리 (목록 갱신)
+                // Reprocess current path (refresh list)
                 ProcessFolder(CurrentPath);
                 
-                // 스크롤 위치 초기화
+                // Reset scroll position
                 browser.TopItem = null;
             }
             finally
             {
-                // 화면 갱신 재개
+                // Resume screen updates
                 browser.EndUpdate();
             }
             
-            // 화면 강제 갱신
+            // Force screen refresh
             browser.Invalidate(true);
             browser.Update();
             
-            // 목록을 새로 고친 후 첫 번째 항목 선택
+            // Select first item after refreshing the list
             SelectFirstItem();
             
-            // 폴더 목록창 동기화
+            // Synchronize folder tree
             SyncNavigationPaneWithCurrentPath();
         }
 
@@ -1208,7 +1164,7 @@ namespace TotalCommander.GUI
                 {
                     if (!frmPacking.IsDisposed)
                     {
-                        var result = frmPacking.ShowDialog(this.FindForm());
+                        var result = ShowDialogCentered(frmPacking);
                         if (result == DialogResult.OK)
                             RefreshListView();
                     }
@@ -1238,7 +1194,7 @@ namespace TotalCommander.GUI
         void SearchItems()
         {
             FormFindFiles frmFind = new FormFindFiles(CurrentPath, browser.SmallImageList);
-            frmFind.ShowDialog(this.FindForm());
+            ShowDialogCentered(frmFind);
         }
         #endregion Searchs files and folders with pattern
 
@@ -1256,7 +1212,10 @@ namespace TotalCommander.GUI
                 ValidateNames = true,
                 Filter = filter
             };
-            if (dialog.ShowDialog() == DialogResult.OK)
+            
+            // Show dialog using FormHelper
+            Form mainForm = this.FindForm();
+            if (FormHelper.ShowCommonDialog(dialog, mainForm) == DialogResult.OK)
             {
                 try
                 {
@@ -1265,19 +1224,19 @@ namespace TotalCommander.GUI
                 }
                 catch (NotSupportedException)
                 {
-                    MessageBox.Show("Invalid file name");
+                    MessageBox.Show(StringResources.GetString("InvalidFileName"));
                 }
                 catch (PathTooLongException)
                 {
-                    MessageBox.Show("The file name is too long");
+                    MessageBox.Show(StringResources.GetString("FileNameTooLong"));
                 }
                 catch (IOException)
                 {
-                    MessageBox.Show("The parent directory of the file to be created is read-only");
+                    MessageBox.Show(StringResources.GetString("ReadOnlyParentDirectory"));
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    MessageBox.Show("Cannot create file in this folder");
+                    MessageBox.Show(StringResources.GetString("CannotCreateFileInThisFolder"));
                 }
                 finally { RefreshListView(); }
             }
@@ -1292,7 +1251,7 @@ namespace TotalCommander.GUI
 
             FormNewFolder frmNewfolder = new FormNewFolder() { NewName = name };
             frmNewfolder.Init();
-            frmNewfolder.ShowDialog(this.FindForm());
+            ShowDialogCentered(frmNewfolder);
 
             if (frmNewfolder.DialogResult == DialogResult.OK)
             {
@@ -1308,24 +1267,24 @@ namespace TotalCommander.GUI
                     }
                     else
                     {
-                        MessageBox.Show("Directory already exists");
+                        MessageBox.Show(StringResources.GetString("FolderAlreadyExists", name));
                     }
                 }
                 catch (NotSupportedException)
                 {
-                    MessageBox.Show("Invalid directory name");
+                    MessageBox.Show(StringResources.GetString("InvalidDirectoryName"));
                 }
                 catch (PathTooLongException)
                 {
-                    MessageBox.Show("The directory name is too long");
+                    MessageBox.Show(StringResources.GetString("DirectoryNameTooLong"));
                 }
                 catch (IOException)
                 {
-                    MessageBox.Show("The parent directory of the directory to be created is read-only");
+                    MessageBox.Show(StringResources.GetString("ReadOnlyParentDirectory"));
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    MessageBox.Show("Cannot create directory in this folder");
+                    MessageBox.Show(StringResources.GetString("CannotCreateDirectoryInThisFolder"));
                 }
             }
         }
@@ -1373,8 +1332,8 @@ namespace TotalCommander.GUI
             }
             catch (System.UnauthorizedAccessException)
             {
-                MessageBox.Show("Access denied on file" + Environment.NewLine + path.FullName,
-                    "Total Commander", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(StringResources.GetString("AccessDeniedOnFile", path.FullName),
+                    StringResources.GetString("TotalCommander"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return null;
             }
             return subFiles;
@@ -1390,7 +1349,7 @@ namespace TotalCommander.GUI
             {
                 if (Navigate(path))
                 {
-                    txtPath.Text = CurrentPath; // 주소표시줄 업데이트
+                    txtPath.Text = CurrentPath; // Update address bar
                     UpdateFolderSummaryStatus();
                     return true;
                 }
@@ -1403,7 +1362,7 @@ namespace TotalCommander.GUI
             if (ProcessFolder(path))
             {
                 m_History.Add(path);
-                txtPath.Text = CurrentPath; // 주소표시줄 업데이트
+                txtPath.Text = CurrentPath; // Update address bar
             }
             else if (File.Exists(path))
             {
@@ -1419,128 +1378,142 @@ namespace TotalCommander.GUI
         /// Do not check if path is exists
         /// </summary>
         /// <returns>Returns values indicated that we have opened the path</returns>
-        private bool Navigate(string path)
+        private bool Navigate(string path, bool updateHistory = true)
         {
             var currentDir = new DirectoryInfo(path);
             var subDirs = GetSubDirectories(currentDir);
             if (null == subDirs)
             {
-                MessageBox.Show("Access denied on folder" + Environment.NewLine + currentDir.FullName,
-                    "Total Commander", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(StringResources.GetString("AccessDeniedOnFolder", path),
+                    StringResources.GetString("TotalCommander"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             CurrentPath = path;
-            // 주소표시줄 업데이트
+            // Update address bar
             txtPath.Text = CurrentPath;
             
-            // 화면 갱신 일시 중지
+            // Pause screen updates
             browser.BeginUpdate();
             
             try
             {
-                // 캐시 및 데이터 초기화
+                // Initialize cache and data
                 m_ListItemCache = null;
                 m_FirstItem = 0;
                 m_ShellItemInfo.Clear();
                 
-                // 가상 목록 크기를 0으로 설정하여 이전 항목 모두 제거
+                // Set virtual list size to 0 to remove all previous items
                 browser.VirtualListSize = 0;
                 
-                // 하위 디렉토리 및 파일 추가
+                // Add subdirectories and files
                 var subFiles = GetSubFiles(currentDir);
                 if (subDirs.Length > 0)
                     m_ShellItemInfo.AddRange(subDirs);
                 if (subFiles != null && subFiles.Length > 0)
                     m_ShellItemInfo.AddRange(subFiles);
                 
-                // 스크롤 위치 초기화
+                // Reset scroll position
                 browser.TopItem = null;
                 
-                // 새 가상 목록 크기 설정
+                // Set new virtual list size
                 browser.VirtualListSize = m_ShellItemInfo.Count;
                 
-                // 첫 번째 항목 선택 (화면 갱신 재개 전에)
+                // Select first item (before resuming screen updates)
                 if (browser.VirtualListSize > 0)
                 {
                     browser.SelectedIndices.Clear();
                     browser.SelectedIndices.Add(0);
                 }
             }
+            catch (IOException ex)
+            {
+                Logger.Error(ex, $"IO Exception when trying to navigate to {path}");
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), StringResources.GetString("FileOpenError", ex.Message),
+                    StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, $"Generic Exception when trying to navigate to {path}");
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), StringResources.GetString("PathNotFound", path),
+                    StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
             finally
             {
-                // 화면 갱신 재개
+                // Resume screen updates
                 browser.EndUpdate();
             }
             
-            // 화면 강제 갱신
+            // Force screen refresh
             browser.Invalidate(true);
             browser.Update();
             
-            // 첫 번째 항목이 보이도록 스크롤
+            // Scroll to make first item visible
             if (browser.VirtualListSize > 0)
             {
                 browser.EnsureVisible(0);
                 browser.FocusedItem = browser.Items[0];
             }
             
-            // 파일 표시창 경로가 변경되면 폴더 목록창에도 반영
+            // Synchronize folder tree with current path
             SyncNavigationPaneWithCurrentPath();
             
             return true;
         }
         
         /// <summary>
-        /// 현재 경로를 기준으로 폴더 목록창(NavigationPane)의 선택된 노드를 동기화합니다.
+        /// Synchronizes the selected node in the folder tree (NavigationPane) with the current path.
         /// </summary>
         private void SyncNavigationPaneWithCurrentPath()
         {
             if (!m_HideNavigationPane && !string.IsNullOrEmpty(CurrentPath))
             {
-                // NavigationPane에 현재 경로 반영
+                // Reflect current path in NavigationPane
                 navigationPane.SelectNodeByPath(CurrentPath);
             }
         }
         
         /// <summary>
-        /// 첫 번째 항목을 선택합니다.
+        /// Selects the first item in the list.
         /// </summary>
         private void SelectFirstItem()
         {
             if (browser.VirtualListSize <= 0)
                 return;
                 
-            // 화면 갱신 일시 중지
+            // Pause screen updates
             browser.BeginUpdate();
             
             try
             {
-                // 현재 선택 초기화
+                // Clear current selection
                 browser.SelectedIndices.Clear();
                 
-                // 스크롤 위치 초기화
+                // Reset scroll position
                 browser.TopItem = null;
                 
-                // 첫 번째 항목 선택
+                // Select first item
                 browser.SelectedIndices.Add(0);
                 
-                // 포커스 설정
+                // Set focus
                 if (browser.Items.Count > 0)
                     browser.FocusedItem = browser.Items[0];
             }
             finally
             {
-                // 화면 갱신 재개
+                // Resume screen updates
                 browser.EndUpdate();
             }
             
-            // 화면 강제 갱신
+            // Force screen refresh
             browser.Invalidate(true);
             browser.Update();
             
-            // 첫 번째 항목이 보이도록 스크롤
+            // Scroll to ensure first item is visible
             browser.EnsureVisible(0);
             
-            // ListView에게 처리할 시간을 주기 위한 이벤트 처리
+            // Give ListView time to process
             Application.DoEvents();
         }
 
@@ -1628,10 +1601,10 @@ namespace TotalCommander.GUI
                 {
                     RefreshDisksBrowser(CurrentPath, disksBrowser.SelectedItem.ToString());
                     
-                    // 첫 번째 항목 선택
+                    // Select first item
                     SelectFirstItem();
                     
-                    // 폴더 목록창 동기화
+                    // Synchronize folder tree
                     SyncNavigationPaneWithCurrentPath();
                 }
             }
@@ -1646,10 +1619,10 @@ namespace TotalCommander.GUI
                 {
                     RefreshDisksBrowser(CurrentPath, disksBrowser.SelectedItem.ToString());
                     
-                    // 첫 번째 항목 선택
+                    // Select first item
                     SelectFirstItem();
                     
-                    // 폴더 목록창 동기화
+                    // Synchronize folder tree
                     SyncNavigationPaneWithCurrentPath();
                 }
             }
@@ -1663,10 +1636,10 @@ namespace TotalCommander.GUI
                 ProcessFileOrFolderPath(parentPath);
                 m_History.Add(parentPath);
                 
-                // 첫 번째 항목 선택
+                // Select first item
                 SelectFirstItem();
                 
-                // 폴더 목록창 동기화
+                // Synchronize folder tree
                 SyncNavigationPaneWithCurrentPath();
             }
         }
@@ -1716,18 +1689,18 @@ namespace TotalCommander.GUI
         {
             if (font == null) return;
 
-            // 파일 목록 ListView의 폰트 변경
+            // Change font for file list ListView
             if (browser != null)
             {
                 browser.Font = font;
             }
 
-            // 폴더 트리 NavigationPane의 폰트 변경
+            // Change font for folder tree NavigationPane
             if (navigationPane != null)
             {
                 navigationPane.Font = font;
             }
-            // 경로 표시 TextBox 폰트도 변경 (선택 사항)
+            // Change path display TextBox font (optional)
             if (txtPath != null)
             {
                 txtPath.Font = font;
@@ -1735,58 +1708,58 @@ namespace TotalCommander.GUI
         }
 
         /// <summary>
-        /// 하단 상태창 폰트를 설정합니다.
+        /// Sets the font for the bottom status bar.
         /// </summary>
-        /// <param name="font">적용할 폰트</param>
+        /// <param name="font">Font to apply</param>
         public void ApplyStatusBarFont(Font font)
         {
             if (font == null || lblBotStatus == null) return;
             
-            // 상태 표시줄의 폰트를 변경합니다. 
-            // 메인 폰트보다 더 작게 설정하여 공간을 절약합니다.
-            float newSize = Math.Max(font.Size - 2, 7); // 최소 7pt, 메인 폰트보다 2pt 작게
+            // Change the status bar font
+            // Set it smaller than the main font to save space
+            float newSize = Math.Max(font.Size - 2, 7); // Minimum 7pt, 2pt smaller than main font
             Font statusFont = new Font(font.FontFamily, newSize, font.Style);
             lblBotStatus.Font = statusFont;
             
-            // 폰트 크기에 맞게 상태바 높이를 조정합니다.
+            // Adjust status bar height to match font size
             AdjustStatusBarHeight(statusFont);
         }
         
         /// <summary>
-        /// 폰트 크기에 맞게 상태바 높이를 조정합니다.
+        /// Adjusts the status bar height to match the font size.
         /// </summary>
-        /// <param name="font">상태바에 적용된 폰트</param>
+        /// <param name="font">Font applied to the status bar</param>
         private void AdjustStatusBarHeight(Font font)
         {
             if (lblBotStatus == null || font == null) return;
             
-            // 기본 여백 (상하 패딩)
+            // Default padding (top and bottom)
             const int padding = 3;
             
-            // 폰트 크기에 기반한 새 높이 계산 - 더 작게 조정
+            // Calculate new height based on font size - adjust smaller
             int newHeight = (int)Math.Ceiling(font.Height * 1.0) + padding;
             
-            // 최소 높이 제한 - 작게 설정
+            // Minimum height restriction - set small
             newHeight = Math.Max(newHeight, 16);
             
-            // 현재 높이와 다른 경우에만 조정
+            // Only adjust if height is different from current
             if (lblBotStatus.Height != newHeight)
             {
-                // 상태바 크기 및 위치 조정
+                // Adjust status bar size and position
                 lblBotStatus.Height = newHeight;
                 lblBotStatus.Location = new System.Drawing.Point(0, this.Height - newHeight);
                 
-                // 컨트롤 레이아웃 업데이트
+                // Update control layout
                 this.PerformLayout();
                 
-                // 상태바와 브라우저 패널 사이의 간격을 조정
+                // Adjust spacing between status bar and browser panel
                 if (splMainView != null)
                 {
-                    // splMainView 크기 조정 (상태바 위에 맞추기)
+                    // Resize splMainView (fit above status bar)
                     splMainView.Height = this.Height - newHeight - splMainView.Location.Y;
                 }
                 
-                // 변경 내용을 화면에 반영
+                // Apply changes to screen
                 lblBotStatus.Invalidate();
                 this.Invalidate();
             }
@@ -1794,36 +1767,36 @@ namespace TotalCommander.GUI
 
         public void FocusNavigationPane()
         {
-            // Focus() 메서드로는 부족할 수 있으므로 여러 방법을 시도
+            // Multiple approaches are used as Focus() method may not be sufficient
             if (this.navigationPane != null)
             {
-                // 1. 먼저 사용자 지정 방식으로 포커스 설정 시도
+                // 1. First try setting focus using custom approach
                 this.navigationPane.Select();
                 this.navigationPane.Focus();
                 
-                // 2. 포커스가 설정되었는지 확인 (디버깅용)
-                // MessageBox.Show("네비게이션 패널 포커스: " + (this.navigationPane.Focused ? "성공" : "실패"));
+                // 2. Verify if focus was set (for debugging)
+                // MessageBox.Show("Navigation panel focus: " + (this.navigationPane.Focused ? "success" : "failure"));
             }
         }
 
         public void FocusFileBrowser()
         {
-            // Focus() 메서드로는 부족할 수 있으므로 여러 방법을 시도
+            // Multiple approaches are used as Focus() method may not be sufficient
             if (this.browser != null)
             {
-                // 1. 먼저 사용자 지정 방식으로 포커스 설정 시도
+                // 1. First try setting focus using custom approach
                 this.browser.Select();
                 this.browser.Focus();
                 
-                // 2. 포커스가 설정되었는지 확인 (디버깅용)
-                // MessageBox.Show("파일 브라우저 포커스: " + (this.browser.Focused ? "성공" : "실패"));
+                // 2. Verify if focus was set (for debugging)
+                // MessageBox.Show("File browser focus: " + (this.browser.Focused ? "success" : "failure"));
             }
         }
         
         /// <summary>
-        /// 현재 컬럼 너비 설정을 가져옵니다.
+        /// Gets the current column width settings.
         /// </summary>
-        /// <returns>컬럼 인덱스와 너비를 포함하는 딕셔너리</returns>
+        /// <returns>Dictionary containing column index and width</returns>
         public Dictionary<int, int> GetColumnWidths()
         {
             if (browser != null && browser.View == View.Details)
@@ -1834,9 +1807,9 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// 저장된 컬럼 너비 설정을 적용합니다.
+        /// Applies saved column width settings.
         /// </summary>
-        /// <param name="columnWidths">적용할 컬럼 너비 설정</param>
+        /// <param name="columnWidths">Column width settings to apply</param>
         public void ApplyColumnWidths(Dictionary<int, int> columnWidths)
         {
             if (browser != null && browser.View == View.Details && columnWidths != null)
@@ -1845,32 +1818,66 @@ namespace TotalCommander.GUI
             }
         }
 
-        // 추가: 마우스 클릭 이벤트를 통한 선택 변경 감지
+        // Additional: Detect selection changes through mouse click events
         private void Browser_MouseClick(object sender, MouseEventArgs e)
         {
-            // 클릭 이벤트가 발생하면 선택이 변경되었을 가능성이 있으므로, SelectedIndexChanged 핸들러를 수동으로 호출
+            // When click event occurs, selection may have changed, so manually call the SelectedIndexChanged handler
             Browser_SelectedIndexChanged(sender, EventArgs.Empty);
         }
         
-        // 추가: 키보드 이벤트를 통한 선택 변경 감지
+        // Additional: Detect selection changes through keyboard events
         private void Browser_KeyUp(object sender, KeyEventArgs e)
         {
-            // 방향키, Space, Enter 등 선택에 영향을 줄 수 있는 키가 눌렸을 때
+            // When keys that can affect selection are pressed (arrow keys, Space, Enter, etc.)
             if (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down || 
                 e.KeyCode == Keys.Left || e.KeyCode == Keys.Right ||
                 e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter ||
                 e.KeyCode == Keys.Home || e.KeyCode == Keys.End ||
                 e.KeyCode == Keys.PageUp || e.KeyCode == Keys.PageDown)
             {
-                // 선택이 변경되었을 가능성이 있으므로, SelectedIndexChanged 핸들러를 수동으로 호출
+                // Selection may have changed, so manually call the SelectedIndexChanged handler
                 Browser_SelectedIndexChanged(sender, EventArgs.Empty);
             }
         }
 
         /// <summary>
-        /// 컬럼 너비 변경 이벤트를 등록하는 메서드
+        /// Adjusts the layout of controls.
         /// </summary>
-        /// <param name="handler">컬럼 너비 변경 이벤트 핸들러</param>
+        private void AdjustLayout()
+        {
+            // Set address bar position and size
+            txtPath.Location = new System.Drawing.Point(0, 0);
+            txtPath.Anchor = System.Windows.Forms.AnchorStyles.Top | 
+                            System.Windows.Forms.AnchorStyles.Left | 
+                            System.Windows.Forms.AnchorStyles.Right;
+            txtPath.Width = this.Width;
+            
+            // Hide disk browser and storage status
+            disksBrowser.Visible = false;
+            lblTopStorageStatus.Visible = false;
+            
+            // Adjust splMainView position and size
+            int topMargin = txtPath.Height + 2; // Small margin below address bar
+            splMainView.Location = new System.Drawing.Point(0, topMargin);
+            splMainView.Height = this.Height - topMargin - lblBotStatus.Height;
+            
+            // Update address bar text
+            txtPath.Text = CurrentPath;
+        }
+        
+        /// <summary>
+        /// Readjusts layout when control size changes.
+        /// </summary>
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            AdjustLayout();
+        }
+
+        /// <summary>
+        /// Register column width change event
+        /// </summary>
+        /// <param name="handler">Column width change event handler</param>
         public void RegisterColumnWidthChangedEvent(EventHandler handler)
         {
             if (browser != null && handler != null)
@@ -1880,9 +1887,9 @@ namespace TotalCommander.GUI
         }
 
         /// <summary>
-        /// 컬럼 너비 변경 이벤트를 해제하는 메서드
+        /// Unregister column width change event
         /// </summary>
-        /// <param name="handler">컬럼 너비 변경 이벤트 핸들러</param>
+        /// <param name="handler">Column width change event handler</param>
         public void UnregisterColumnWidthChangedEvent(EventHandler handler)
         {
             if (browser != null && handler != null)
@@ -1892,9 +1899,9 @@ namespace TotalCommander.GUI
         }
 
         /// <summary>
-        /// SplitterDistance 값을 가져옵니다.
+        /// Gets the SplitterDistance value.
         /// </summary>
-        /// <returns>현재 SplitterDistance 값</returns>
+        /// <returns>Current SplitterDistance value</returns>
         public int GetSplitterDistance()
         {
             if (splMainView != null)
@@ -1905,29 +1912,29 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// SplitterDistance 값을 설정합니다.
+        /// Sets the SplitterDistance value.
         /// </summary>
-        /// <param name="distance">설정할 SplitterDistance 값</param>
+        /// <param name="distance">SplitterDistance value to set</param>
         public void SetSplitterDistance(int distance)
         {
             if (splMainView != null && distance > 0)
             {
-                // 최소값과 최대값 사이로 제한
+                // Limit between minimum and maximum values
                 int minDistance = splMainView.Panel1MinSize;
                 int maxDistance = splMainView.Width - splMainView.Panel2MinSize - splMainView.SplitterWidth;
                 
-                // 유효한 범위로 조정
+                // Adjust to valid range
                 distance = Math.Max(minDistance, Math.Min(distance, maxDistance));
                 
-                // SplitterDistance 설정
+                // Set SplitterDistance
                 splMainView.SplitterDistance = distance;
             }
         }
         
         /// <summary>
-        /// SplitterDistance 변경 이벤트를 구독합니다.
+        /// Subscribe to SplitterDistance change event.
         /// </summary>
-        /// <param name="handler">이벤트 핸들러</param>
+        /// <param name="handler">Event handler</param>
         public void RegisterSplitterDistanceChangedEvent(SplitterEventHandler handler)
         {
             if (splMainView != null && handler != null)
@@ -1937,9 +1944,9 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// SplitterDistance 변경 이벤트 구독을 해제합니다.
+        /// Unsubscribe from SplitterDistance change event.
         /// </summary>
-        /// <param name="handler">이벤트 핸들러</param>
+        /// <param name="handler">Event handler</param>
         public void UnregisterSplitterDistanceChangedEvent(SplitterEventHandler handler)
         {
             if (splMainView != null && handler != null)
@@ -1949,173 +1956,43 @@ namespace TotalCommander.GUI
         }
 
         /// <summary>
-        /// 선택된 파일이나 폴더의 이름을 변경합니다.
+        /// Renames the selected file or folder.
         /// </summary>
         public void RenameSelectedItem()
         {
             if (browser.SelectedIndices.Count != 1)
             {
-                MessageBox.Show("이름을 변경하려면 하나의 항목만 선택해야 합니다.", "이름 변경", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(StringResources.GetString("RenameMultipleNotAllowed"), 
+                               StringResources.GetString("RenameTitle"), 
+                               MessageBoxButtons.OK, 
+                               MessageBoxIcon.Information);
                 return;
             }
 
-            int selectedIndex = browser.SelectedIndices[0];
-            if (selectedIndex < 0 || selectedIndex >= m_ShellItemInfo.Count)
+            int selectedIdx = browser.SelectedIndices[0];
+            if (selectedIdx < 0 || selectedIdx >= m_ShellItemInfo.Count)
                 return;
 
-            FileSystemInfo selectedItem = m_ShellItemInfo[selectedIndex];
-            string oldPath = selectedItem.FullName;
-            string oldName = selectedItem.Name;
-            string parentPath = Path.GetDirectoryName(oldPath);
-            
-            // 입력 대화상자를 사용하여 새 이름을 받음
-            using (var dialog = new Form())
+            browser.LabelEdit = true;
+            browser.SelectedItems[0].BeginEdit();
+        }
+
+        /// <summary>
+        /// Shows a dialog centered on the main form
+        /// </summary>
+        private DialogResult ShowDialogCentered(Form dialog)
+        {
+            Form mainForm = this.FindForm();
+            if (mainForm != null)
             {
-                dialog.Text = "이름 변경";
-                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
-                dialog.MaximizeBox = false;
-                dialog.MinimizeBox = false;
-                dialog.StartPosition = FormStartPosition.CenterParent;
-                dialog.Width = 405; // 빨간색 선에 맞게 폼 너비 조정
-                dialog.Height = 130;
-                dialog.ShowInTaskbar = false;
-                dialog.KeyPreview = true; // 키 이벤트를 폼에서 먼저 처리하도록 설정
-                
-                // ESC 키 처리를 위한 이벤트 핸들러 추가
-                dialog.KeyDown += (s, e) => {
-                    if (e.KeyCode == Keys.Escape)
-                    {
-                        dialog.DialogResult = DialogResult.Cancel;
-                        dialog.Close();
-                    }
-                };
-
-                // 텍스트박스 위치 조정 (라벨 제거로 인해)
-                var textBox = new TextBox
-                {
-                    Text = oldName,
-                    Left = 12,
-                    Top = 20,
-                    Width = 370,
-                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
-                };
-                
-                // 텍스트박스에 모든 텍스트 선택
-                textBox.SelectAll();
-                
-                var okButton = new Button
-                {
-                    Text = "저장(&S)",  // Alt+S 단축키를 위한 &S 표기
-                    DialogResult = DialogResult.OK,
-                    Left = 227,
-                    Top = 60,
-                    Width = 75
-                };
-                
-                var cancelButton = new Button
-                {
-                    Text = "닫기(&C)",  // Alt+C 단축키를 위한 &C 표기
-                    DialogResult = DialogResult.Cancel,
-                    Left = 308,
-                    Top = 60,
-                    Width = 75
-                };
-                
-                dialog.Controls.Add(textBox);
-                dialog.Controls.Add(okButton);
-                dialog.Controls.Add(cancelButton);
-                
-                dialog.AcceptButton = okButton;    // Enter 키로 확인 버튼 클릭
-                dialog.CancelButton = cancelButton; // ESC 키로 취소 버튼 클릭
-                
-                // 폼 보여주기
-                DialogResult result = dialog.ShowDialog();
-                
-                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(textBox.Text) && textBox.Text != oldName)
-                {
-                    try
-                    {
-                        string newName = textBox.Text;
-                        string newPath = Path.Combine(parentPath, newName);
-                        
-                        // 동일한 이름이 이미 존재하는지 확인
-                        if (selectedItem is DirectoryInfo && Directory.Exists(newPath))
-                        {
-                            MessageBox.Show($"이미 '{newName}' 폴더가 존재합니다.", "이름 변경 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return;
-                        }
-                        else if (selectedItem is FileInfo && File.Exists(newPath))
-                        {
-                            MessageBox.Show($"이미 '{newName}' 파일이 존재합니다.", "이름 변경 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return;
-                        }
-                        
-                        // 파일이나 폴더 이름 변경
-                        if (selectedItem is DirectoryInfo)
-                        {
-                            Directory.Move(oldPath, newPath);
-                        }
-                        else
-                        {
-                            File.Move(oldPath, newPath);
-                        }
-                        
-                        // 목록 새로고침
-                        RefreshListView();
-                        
-                        // 이름이 변경된 항목 선택
-                        for (int i = 0; i < m_ShellItemInfo.Count; i++)
-                        {
-                            if (m_ShellItemInfo[i].FullName.Equals(newPath, StringComparison.OrdinalIgnoreCase))
-                            {
-                                browser.SelectedIndices.Clear();
-                                browser.SelectedIndices.Add(i);
-                                browser.EnsureVisible(i);
-                                browser.FocusedItem = browser.Items[i];
-                                break;
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"이름을 변경하는 중 오류가 발생했습니다: {ex.Message}", "이름 변경 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
+                return FormHelper.ShowDialogCentered(dialog, mainForm);
             }
-        }
-
-        /// <summary>
-        /// 레이아웃을 조정합니다.
-        /// </summary>
-        private void AdjustLayout()
-        {
-            // 주소표시줄 위치 및 크기 설정
-            txtPath.Location = new System.Drawing.Point(0, 0);
-            txtPath.Anchor = System.Windows.Forms.AnchorStyles.Top | 
-                            System.Windows.Forms.AnchorStyles.Left | 
-                            System.Windows.Forms.AnchorStyles.Right;
-            txtPath.Width = this.Width;
-            
-            // 디스크 브라우저 및 저장소 상태 숨기기
-            disksBrowser.Visible = false;
-            lblTopStorageStatus.Visible = false;
-            
-            // splMainView 위치 및 크기 조정
-            int topMargin = txtPath.Height + 2; // 주소표시줄 아래 약간의 여백
-            splMainView.Location = new System.Drawing.Point(0, topMargin);
-            splMainView.Height = this.Height - topMargin - lblBotStatus.Height;
-            
-            // 주소표시줄 업데이트
-            txtPath.Text = CurrentPath;
-        }
-        
-        /// <summary>
-        /// 컨트롤 크기가 변경될 때 레이아웃을 재조정합니다.
-        /// </summary>
-        protected override void OnResize(EventArgs e)
-        {
-            base.OnResize(e);
-            AdjustLayout();
+            else
+            {
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.Owner = mainForm;
+                return dialog.ShowDialog();
+            }
         }
     }
 }

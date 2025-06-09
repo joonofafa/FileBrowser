@@ -1,3 +1,5 @@
+using TotalCommander;
+
 namespace TotalCommander.GUI
 {
     partial class FormKeySettings

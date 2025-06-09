@@ -1,4 +1,8 @@
-﻿namespace TotalCommander.GUI
+using System;
+using System.Windows.Forms;
+using TotalCommander;
+
+namespace TotalCommander.GUI
 {
     partial class FormNewFolder
     {
@@ -42,7 +46,7 @@
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(121, 13);
             this.label1.TabIndex = 0;
-            this.label1.Text = "New folder (directory):";
+            this.label1.Text = StringResources.GetString("FolderName");
             // 
             // txtNewName
             // 
@@ -57,7 +61,7 @@
             this.btnOK.Name = "btnOK";
             this.btnOK.Size = new System.Drawing.Size(75, 23);
             this.btnOK.TabIndex = 2;
-            this.btnOK.Text = "OK";
+            this.btnOK.Text = StringResources.GetString("OK");
             this.btnOK.UseVisualStyleBackColor = true;
             // 
             // btnCancel
@@ -66,7 +70,7 @@
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 3;
-            this.btnCancel.Text = "Cancel";
+            this.btnCancel.Text = StringResources.GetString("Cancel");
             this.btnCancel.UseVisualStyleBackColor = true;
             // 
             // Form_NewFolder
@@ -82,7 +86,7 @@
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.KeyPreview = true;
             this.Name = "Form_NewFolder";
-            this.Text = "Total Commander";
+            this.Text = StringResources.GetString("CreateNewFolder");
             this.ResumeLayout(false);
             this.PerformLayout();
 

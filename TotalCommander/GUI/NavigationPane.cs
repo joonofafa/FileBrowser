@@ -1,4 +1,6 @@
-ï»¿using System;
+using TotalCommander;
+
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -392,27 +394,27 @@ namespace TotalCommander.GUI
         }
 
         /// <summary>
-        /// ì§€ì •ëœ ê²½ë¡œì— í•´ë‹¹í•˜ëŠ” ë…¸ë“œë¥¼ ì°¾ì•„ ì„ íƒí•©ë‹ˆë‹¤.
+        /// ÁöÁ¤µÈ °æ·Î¿¡ ÇØ´çÇÏ´Â ³ëµå¸¦ Ã£¾Æ ¼±ÅÃÇÕ´Ï´Ù.
         /// </summary>
-        /// <param name="path">ì„ íƒí•  ê²½ë¡œ</param>
-        /// <returns>ë…¸ë“œë¥¼ ì°¾ì•„ ì„ íƒí–ˆìœ¼ë©´ true, ì•„ë‹ˆë©´ false</returns>
+        /// <param name="path">¼±ÅÃÇÒ °æ·Î</param>
+        /// <returns>³ëµå¸¦ Ã£¾Æ ¼±ÅÃÇßÀ¸¸é true, ¾Æ´Ï¸é false</returns>
         public bool SelectNodeByPath(string path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
                 
-            // ê²½ë¡œ ì •ê·œí™”
+            // °æ·Î Á¤±ÔÈ­
             path = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar);
             
-            // ëª¨ë“  ë…¸ë“œë¥¼ ê²€ìƒ‰
+            // ¸ğµç ³ëµå¸¦ °Ë»ö
             TreeNode foundNode = FindNodeByPath(this.Nodes, path);
             
             if (foundNode != null)
             {
-                // ë°œê²¬í•œ ë…¸ë“œì˜ ë¶€ëª¨ ë…¸ë“œë“¤ì„ ëª¨ë‘ í™•ì¥
+                // ¹ß°ßÇÑ ³ëµåÀÇ ºÎ¸ğ ³ëµåµéÀ» ¸ğµÎ È®Àå
                 ExpandParentNodes(foundNode);
                 
-                // ë…¸ë“œ ì„ íƒ
+                // ³ëµå ¼±ÅÃ
                 this.SelectedNode = foundNode;
                 foundNode.EnsureVisible();
                 return true;
@@ -422,28 +424,28 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// ì§€ì •ëœ ê²½ë¡œì— í•´ë‹¹í•˜ëŠ” ë…¸ë“œë¥¼ ì¬ê·€ì ìœ¼ë¡œ ì°¾ìŠµë‹ˆë‹¤.
+        /// ÁöÁ¤µÈ °æ·Î¿¡ ÇØ´çÇÏ´Â ³ëµå¸¦ Àç±ÍÀûÀ¸·Î Ã£½À´Ï´Ù.
         /// </summary>
         private TreeNode FindNodeByPath(TreeNodeCollection nodes, string path)
         {
             foreach (TreeNode node in nodes)
             {
-                // í˜„ì¬ ë…¸ë“œ íƒœê·¸ì™€ ê²½ë¡œ ë¹„êµ
+                // ÇöÀç ³ëµå ÅÂ±×¿Í °æ·Î ºñ±³
                 if (node.Tag != null && node.Tag.ToString().Equals(path, StringComparison.OrdinalIgnoreCase))
                 {
                     return node;
                 }
                 
-                // íŠ¹ë³„í•œ í´ë”ì— ëŒ€í•œ ì²˜ë¦¬
+                // Æ¯º°ÇÑ Æú´õ¿¡ ´ëÇÑ Ã³¸®
                 if (IsSpecialFolder(node, path))
                 {
                     return node;
                 }
                 
-                // í•˜ìœ„ ë…¸ë“œ ê²€ìƒ‰
+                // ÇÏÀ§ ³ëµå °Ë»ö
                 if (node.Nodes.Count > 0)
                 {
-                    // ë…¸ë“œ í™•ì¥ ë° í•˜ìœ„ ë…¸ë“œ ê²€ìƒ‰
+                    // ³ëµå È®Àå ¹× ÇÏÀ§ ³ëµå °Ë»ö
                     TreeNode childNode = FindNodeByPath(node.Nodes, path);
                     if (childNode != null)
                     {
@@ -451,17 +453,17 @@ namespace TotalCommander.GUI
                     }
                 }
                 
-                // ê²½ë¡œê°€ í˜„ì¬ ë…¸ë“œì˜ í•˜ìœ„ ê²½ë¡œì¸ ê²½ìš°, ë…¸ë“œë¥¼ í™•ì¥í•´ì„œ í•˜ìœ„ ë…¸ë“œ ë¡œë“œ
+                // °æ·Î°¡ ÇöÀç ³ëµåÀÇ ÇÏÀ§ °æ·ÎÀÎ °æ¿ì, ³ëµå¸¦ È®ÀåÇØ¼­ ÇÏÀ§ ³ëµå ·Îµå
                 if (node.Tag != null && 
                     !IsSpecialFolders(node.Tag.ToString()) && 
                     path.StartsWith(node.Tag.ToString(), StringComparison.OrdinalIgnoreCase) &&
                     node.Nodes.Count == 1 && 
                     string.IsNullOrEmpty(node.Nodes[0].Text))
                 {
-                    // ë…¸ë“œ í™•ì¥ (í•˜ìœ„ ë…¸ë“œ ë¡œë“œ)
+                    // ³ëµå È®Àå (ÇÏÀ§ ³ëµå ·Îµå)
                     node.Expand();
                     
-                    // í™•ì¥ í›„ í•˜ìœ„ ë…¸ë“œ ê²€ìƒ‰
+                    // È®Àå ÈÄ ÇÏÀ§ ³ëµå °Ë»ö
                     TreeNode expandedChildNode = FindNodeByPath(node.Nodes, path);
                     if (expandedChildNode != null)
                     {
@@ -474,16 +476,16 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// íŠ¹ë³„í•œ í´ë”ì¸ì§€ í™•ì¸í•©ë‹ˆë‹¤.
+        /// Æ¯º°ÇÑ Æú´õÀÎÁö È®ÀÎÇÕ´Ï´Ù.
         /// </summary>
         private bool IsSpecialFolder(TreeNode node, string path)
         {
             if (node.Tag == null) return false;
             
-            // íŠ¹ë³„í•œ í´ë” ê²½ë¡œ ì²˜ë¦¬
+            // Æ¯º°ÇÑ Æú´õ °æ·Î Ã³¸®
             string specialPath = node.Tag.ToString();
             
-            // ë°ìŠ¤í¬í†±, ë‹¤ìš´ë¡œë“œ ë“± íŠ¹ë³„í•œ í´ë” í™•ì¸
+            // µ¥½ºÅ©Åé, ´Ù¿î·Îµå µî Æ¯º°ÇÑ Æú´õ È®ÀÎ
             if (specialPath.Equals(SpecialDirectories.Desktop, StringComparison.OrdinalIgnoreCase) && 
                 path.Equals(SpecialDirectories.Desktop, StringComparison.OrdinalIgnoreCase))
             {
@@ -520,7 +522,7 @@ namespace TotalCommander.GUI
                 return true;
             }
             
-            // ë“œë¼ì´ë¸Œ ë£¨íŠ¸ í™•ì¸
+            // µå¶óÀÌºê ·çÆ® È®ÀÎ
             if (IsRootDrive(specialPath) && IsRootDrive(path) && 
                 Path.GetPathRoot(specialPath).Equals(Path.GetPathRoot(path), StringComparison.OrdinalIgnoreCase))
             {
@@ -531,7 +533,7 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// ë£¨íŠ¸ ë“œë¼ì´ë¸Œì¸ì§€ í™•ì¸í•©ë‹ˆë‹¤.
+        /// ·çÆ® µå¶óÀÌºêÀÎÁö È®ÀÎÇÕ´Ï´Ù.
         /// </summary>
         private bool IsRootDrive(string path)
         {
@@ -549,7 +551,7 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// ë…¸ë“œì˜ ëª¨ë“  ë¶€ëª¨ ë…¸ë“œë¥¼ í™•ì¥í•©ë‹ˆë‹¤.
+        /// ³ëµåÀÇ ¸ğµç ºÎ¸ğ ³ëµå¸¦ È®ÀåÇÕ´Ï´Ù.
         /// </summary>
         private void ExpandParentNodes(TreeNode node)
         {
@@ -561,3 +563,4 @@ namespace TotalCommander.GUI
         }
     }
 }
+

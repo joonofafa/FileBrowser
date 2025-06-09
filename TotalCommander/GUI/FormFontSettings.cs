@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
+using TotalCommander;
 
 namespace TotalCommander.GUI
 {
@@ -15,29 +16,29 @@ namespace TotalCommander.GUI
         {
             InitializeComponent();
             m_InitialFont = currentFont;
-            SelectedFont = currentFont; // 기본값은 현재 폰트
-            ApplyToStatusBar = true; // 기본값은 상태창에도 적용
+            SelectedFont = currentFont; // Default is current font
+            ApplyToStatusBar = true; // Default is to apply to status bar
         }
 
         private void FormFontSettings_Load(object sender, EventArgs e)
         {
-            // 글꼴 가족 로드
+            // Load font families
             foreach (FontFamily fontFamily in FontFamily.Families)
             {
                 comboBoxFontFamily.Items.Add(fontFamily.Name);
             }
 
-            // 일반적인 글꼴 크기 로드
+            // Load common font sizes
             var commonSizes = new object[] { 8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72 };
             comboBoxFontSize.Items.AddRange(commonSizes);
 
-            // 현재 폰트 설정 반영
+            // Apply current font settings
             if (m_InitialFont != null)
             {
                 comboBoxFontFamily.SelectedItem = m_InitialFont.FontFamily.Name;
-                comboBoxFontSize.SelectedItem = (int)m_InitialFont.Size; // 정수 크기만 우선 지원
+                comboBoxFontSize.SelectedItem = (int)m_InitialFont.Size; // Only support integer sizes for now
                 if (!comboBoxFontSize.Items.Contains((int)m_InitialFont.Size)) {
-                    // 목록에 없는 크기면 직접 추가하고 선택
+                    // If size not in list, add and select it
                     comboBoxFontSize.Items.Add((int)m_InitialFont.Size);
                     comboBoxFontSize.SelectedItem = (int)m_InitialFont.Size;
                 }
@@ -47,13 +48,13 @@ namespace TotalCommander.GUI
             }
             else
             {
-                // 기본값 설정 (예: 시스템 기본 UI 폰트 또는 특정 폰트)
+                // Set default values (e.g., system default UI font or specific font)
                 comboBoxFontFamily.SelectedIndex = comboBoxFontFamily.Items.IndexOf("Microsoft Sans Serif");
                 if (comboBoxFontFamily.SelectedIndex == -1 && comboBoxFontFamily.Items.Count > 0) comboBoxFontFamily.SelectedIndex = 0;
                 comboBoxFontSize.SelectedItem = 10;
             }
             
-            // 하단 상태창 설정 초기화
+            // Initialize status bar settings
             checkBoxApplyToStatusBar.Checked = true;
             
             UpdatePreview();
@@ -75,29 +76,28 @@ namespace TotalCommander.GUI
                 if (checkBoxItalic.Checked)
                     style |= FontStyle.Italic;
 
-                // 주 프리뷰 텍스트 업데이트
+                // Update main preview text
                 Font previewFont = new Font(fontFamilyName, fontSize, style);
                 textBoxPreview.Font = previewFont;
-                textBoxPreview.Text = "AaBbYyZz 가나다라 123"; // 샘플 텍스트
+                textBoxPreview.Text = StringResources.GetString("SampleText"); // Sample text
                 
-                // 상태창 프리뷰도 업데이트 (상태창은 일반적으로 크기가 약간 작을 수 있음)
+                // Update status bar preview (status bar is typically slightly smaller)
                 if (checkBoxApplyToStatusBar.Checked)
                 {
-                    // 상태창 폰트 크기는 주 폰트보다 1pt 작게 설정 (옵션)
-                    float statusFontSize = Math.Max(fontSize - 1, 8); // 최소 크기 8pt로 제한
+                    // Status bar font size is 1pt smaller than main font (optional)
+                    float statusFontSize = Math.Max(fontSize - 1, 8); // Minimum size 8pt
                     Font statusFont = new Font(fontFamilyName, statusFontSize, style);
                     labelStatusBarPreview.Font = statusFont;
                 }
                 else
                 {
-                    // 기본 시스템 폰트로 설정
+                    // Set to default system font
                     labelStatusBarPreview.Font = SystemFonts.StatusFont;
                 }
             }
             catch (Exception ex)
             {
-                // 글꼴 생성 실패 시 (예: 해당 스타일을 지원하지 않는 글꼴)
-                // textBoxPreview.Text = "미리보기 오류";
+                // Handle font creation failure (e.g., font doesn't support the style)
                 System.Diagnostics.Debug.WriteLine("Font preview error: " + ex.Message);
             }
         }
@@ -114,10 +114,10 @@ namespace TotalCommander.GUI
 
         private void comboBoxFontSize_TextChanged(object sender, EventArgs e)
         {
-            // 사용자가 직접 크기를 입력하는 경우도 처리
+            // Handle direct size input
             if (float.TryParse(comboBoxFontSize.Text, out float size))
             {
-                 if (size > 0 && size < 200) // 유효한 크기 범위
+                 if (size > 0 && size < 200) // Valid size range
                  {
                     UpdatePreview();
                  }
@@ -160,14 +160,24 @@ namespace TotalCommander.GUI
                 }
                 catch(Exception ex)
                 {
-                    MessageBox.Show(this, "선택한 글꼴을 적용할 수 없습니다: " + ex.Message, "글꼴 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    this.DialogResult = DialogResult.None; // 오류 시 닫히지 않도록
+                    MessageBox.Show(
+                        this, 
+                        StringResources.GetString("InvalidFontError", ex.Message), 
+                        StringResources.GetString("FontError"), 
+                        MessageBoxButtons.OK, 
+                        MessageBoxIcon.Error);
+                    this.DialogResult = DialogResult.None; // Don't close on error
                 }
             }
             else
             {
-                 MessageBox.Show(this, "글꼴과 크기를 선택해주세요.", "입력 오류", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                 this.DialogResult = DialogResult.None; // 오류 시 닫히지 않도록
+                 MessageBox.Show(
+                     this, 
+                     StringResources.GetString("SelectFontAndSize"), 
+                     StringResources.GetString("InputError"), 
+                     MessageBoxButtons.OK, 
+                     MessageBoxIcon.Warning);
+                 this.DialogResult = DialogResult.None; // Don't close on error
             }
         }
 

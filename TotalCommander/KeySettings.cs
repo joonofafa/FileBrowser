@@ -3,34 +3,35 @@ using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
 using System.Xml.Serialization;
+using TotalCommander;
 
 namespace TotalCommander
 {
     /// <summary>
-    /// 사용 가능한 기능 키 액션 목록
+    /// List of available key actions
     /// </summary>
     public enum KeyAction
     {
         None,
-        View,               // 파일 보기
-        Edit,               // 파일 편집
-        Copy,               // 복사
-        Cut,                // 잘라내기
-        Paste,              // 붙여넣기
-        Delete,             // 삭제
-        CreateFolder,       // 새 폴더 생성
-        Properties,         // 속성
-        Refresh,            // 새로고침
-        GoParent,           // 상위 폴더로 이동
-        GoBack,             // 뒤로 이동
-        GoForward,          // 앞으로 이동
-        Exit,               // 종료
-        Rename,             // 이름 변경
-        UserExecute         // 사용자 정의 실행 옵션
+        View,               // View file
+        Edit,               // Edit file
+        Copy,               // Copy
+        Cut,                // Cut
+        Paste,              // Paste
+        Delete,             // Delete
+        CreateFolder,       // Create new folder
+        Properties,         // Properties
+        Refresh,            // Refresh
+        GoParent,           // Go to parent folder
+        GoBack,             // Go back
+        GoForward,          // Go forward
+        Exit,               // Exit
+        Rename,             // Rename
+        UserExecute         // User-defined execution option
     }
 
     /// <summary>
-    /// 사용자 정의 실행 옵션 클래스
+    /// User-defined execution option class
     /// </summary>
     [Serializable]
     public class UserExecuteOption
@@ -41,7 +42,7 @@ namespace TotalCommander
 
         public UserExecuteOption()
         {
-            // 기본 생성자 (직렬화용)
+            // Default constructor (for serialization)
             Name = "";
             ExecutablePath = "";
             Parameters = "";
@@ -60,37 +61,37 @@ namespace TotalCommander
         }
         
         /// <summary>
-        /// 사용자 실행 옵션을 실행합니다.
+        /// Executes the user-defined option
         /// </summary>
-        /// <param name="leftExplorerFullPath">왼쪽 파일 목록에서 선택된 항목의 전체 경로</param>
-        /// <param name="rightExplorerFullPath">오른쪽 파일 목록에서 선택된 항목의 전체 경로</param>
-        /// <param name="focusingExplorerFullPath">현재 포커싱된 파일표시창에 선택된 항목의 전체 경로</param>
+        /// <param name="leftExplorerFullPath">Full path of the selected item in the left file list</param>
+        /// <param name="rightExplorerFullPath">Full path of the selected item in the right file list</param>
+        /// <param name="focusingExplorerFullPath">Full path of the selected item in the currently focused file list</param>
         public void Execute(string leftExplorerFullPath, string rightExplorerFullPath, string focusingExplorerFullPath = null)
         {
             try
             {
-                // 디버깅 정보 - 각 경로 확인
+                // Debugging information - check each path
                 System.Text.StringBuilder debugInfo = new System.Text.StringBuilder();
-                debugInfo.AppendLine("파라미터 변수 디버그 정보:");
-                debugInfo.AppendLine($"왼쪽 탐색기 경로: {leftExplorerFullPath ?? "없음"}");
-                debugInfo.AppendLine($"오른쪽 탐색기 경로: {rightExplorerFullPath ?? "없음"}");
-                debugInfo.AppendLine($"현재 포커싱 탐색기 경로: {focusingExplorerFullPath ?? "없음"}");
-                debugInfo.AppendLine($"원본 파라미터: {Parameters}");
+                debugInfo.AppendLine(StringResources.GetString("ParameterDebugInfo"));
+                debugInfo.AppendLine(StringResources.GetString("LeftExplorerPath", leftExplorerFullPath ?? "None"));
+                debugInfo.AppendLine(StringResources.GetString("RightExplorerPath", rightExplorerFullPath ?? "None"));
+                debugInfo.AppendLine(StringResources.GetString("FocusingExplorerPath", focusingExplorerFullPath ?? "None"));
+                debugInfo.AppendLine(StringResources.GetString("OriginalParameters", Parameters));
 
-                // 파라미터 변수 치환
+                // Parameter variable substitution
                 string parameters = Parameters;
                 
-                // 경로 유효성 검사 - null이면 빈 문자열로 대체
+                // Path validation - replace null with empty string
                 leftExplorerFullPath = leftExplorerFullPath ?? string.Empty;
                 rightExplorerFullPath = rightExplorerFullPath ?? string.Empty;
                 focusingExplorerFullPath = focusingExplorerFullPath ?? string.Empty;
                 
-                // 디렉토리 경로 미리 계산
+                // Pre-calculate directory paths
                 string leftExplorerDirPath = string.Empty;
                 string rightExplorerDirPath = string.Empty;
                 string focusingExplorerDirPath = string.Empty;
                 
-                // 디렉토리 경로 안전하게 추출
+                // Safely extract directory paths
                 if (!string.IsNullOrEmpty(leftExplorerFullPath))
                 {
                     try {
@@ -98,7 +99,7 @@ namespace TotalCommander
                     } catch {
                         leftExplorerDirPath = leftExplorerFullPath;
                     }
-                    debugInfo.AppendLine($"왼쪽 디렉토리 경로: {leftExplorerDirPath}");
+                    debugInfo.AppendLine(StringResources.GetString("LeftDirectoryPath", leftExplorerDirPath));
                 }
                 
                 if (!string.IsNullOrEmpty(rightExplorerFullPath))
@@ -108,7 +109,7 @@ namespace TotalCommander
                     } catch {
                         rightExplorerDirPath = rightExplorerFullPath;
                     }
-                    debugInfo.AppendLine($"오른쪽 디렉토리 경로: {rightExplorerDirPath}");
+                    debugInfo.AppendLine(StringResources.GetString("RightDirectoryPath", rightExplorerDirPath));
                 }
                 
                 if (!string.IsNullOrEmpty(focusingExplorerFullPath))
@@ -118,47 +119,51 @@ namespace TotalCommander
                     } catch {
                         focusingExplorerDirPath = focusingExplorerFullPath;
                     }
-                    debugInfo.AppendLine($"포커싱 디렉토리 경로: {focusingExplorerDirPath}");
+                    debugInfo.AppendLine(StringResources.GetString("FocusingDirectoryPath", focusingExplorerDirPath));
                 }
                 
-                // 모든 변수 치환 - 가장 긴 변수명부터 치환 (짧은 변수명이 긴 변수명의 일부일 경우를 대비)
-                // 왼쪽 탐색기 변수 치환
+                // Substitute all variables - start with the longest variable names 
+                // (to handle cases where a short variable name is part of a longer one)
+                // Left explorer variable substitution
                 parameters = parameters.Replace("{SelectedItemFullPath:LeftExplorer}", leftExplorerFullPath);
                 parameters = parameters.Replace("{SelectedItemDirPath:LeftExplorer}", leftExplorerDirPath);
                 
-                // 오른쪽 탐색기 변수 치환
+                // Right explorer variable substitution
                 parameters = parameters.Replace("{SelectedItemFullPath:RightExplorer}", rightExplorerFullPath);
                 parameters = parameters.Replace("{SelectedItemDirPath:RightExplorer}", rightExplorerDirPath);
                 
-                // 포커싱 탐색기 변수 치환
+                // Focusing explorer variable substitution
                 parameters = parameters.Replace("{SelectedItemFullPath:FocusingExplorer}", focusingExplorerFullPath);
                 parameters = parameters.Replace("{SelectedItemDirPath:FocusingExplorer}", focusingExplorerDirPath);
                 
-                // 하위 호환성을 위한 이전 변수명 치환
+                // Legacy variable names for backward compatibility
                 parameters = parameters.Replace("{Explorer1:SelectedItem}", leftExplorerFullPath);
                 parameters = parameters.Replace("{Explorer2:SelectedItem}", rightExplorerFullPath);
                 parameters = parameters.Replace("{ActiveExplorer:SelectedItem}", focusingExplorerFullPath);
                 
-                debugInfo.AppendLine($"치환 후 파라미터: {parameters}");
+                debugInfo.AppendLine(StringResources.GetString("ParametersAfterSubstitution", parameters));
 
-                // 디버그 정보를 로그 파일에 기록
+                // Log debug information
                 Logger.DebugMultiline($"UserExecuteOption({Name})", debugInfo.ToString());
                 
-                // 프로세스 시작
-                Logger.Info($"Executing: {ExecutablePath} {parameters}");
+                // Start process
+                Logger.Information($"Executing: {ExecutablePath} {parameters}");
                 System.Diagnostics.Process.Start(ExecutablePath, parameters);
             }
             catch (Exception ex)
             {
                 Logger.Error(ex, $"UserExecuteOption({Name}) execution failed");
-                System.Windows.Forms.MessageBox.Show($"실행 중 오류가 발생했습니다: {ex.Message}", "실행 오류", 
-                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                System.Windows.Forms.MessageBox.Show(
+                    StringResources.GetString("ExecutionErrorMessage", ex.Message), 
+                    StringResources.GetString("ExecutionError"), 
+                    System.Windows.Forms.MessageBoxButtons.OK, 
+                    System.Windows.Forms.MessageBoxIcon.Error);
             }
         }
     }
 
     /// <summary>
-    /// 단일 키 설정 항목
+    /// Single key setting item
     /// </summary>
     [Serializable]
     public class KeySetting
@@ -169,7 +174,7 @@ namespace TotalCommander
 
         public KeySetting()
         {
-            // 기본 생성자 (직렬화용)
+            // Default constructor (for serialization)
             UserExecuteOptionName = "";
         }
 
@@ -189,7 +194,7 @@ namespace TotalCommander
     }
 
     /// <summary>
-    /// 모든 키 설정을 관리하는 클래스
+    /// Class to manage all key settings
     /// </summary>
     [Serializable]
     public class KeySettings
@@ -200,7 +205,7 @@ namespace TotalCommander
         private static string SettingsFilePath => GetSettingsFilePath();
 
         /// <summary>
-        /// 설정 파일의 전체 경로를 반환합니다.
+        /// Returns the full path of the settings file
         /// </summary>
         public static string GetSettingsFilePath()
         {
@@ -213,12 +218,12 @@ namespace TotalCommander
         {
             Settings = new List<KeySetting>();
             UserExecuteOptions = new List<UserExecuteOption>();
-            // 기본값 설정 메서드 호출 제거 (생성자에서 자동 호출하지 않음)
+            // Default settings method removed (not automatically called in constructor)
             // SetDefaults();
         }
 
         /// <summary>
-        /// 기본 키 설정으로 초기화
+        /// Initializes with default key settings
         /// </summary>
         public void SetDefaults()
         {
@@ -233,7 +238,7 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 특정 키에 해당하는 액션 찾기
+        /// Finds the action corresponding to a specific key
         /// </summary>
         public KeyAction GetActionForKey(Keys key)
         {
@@ -246,7 +251,7 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 특정 키에 해당하는 사용자 실행 옵션 이름 찾기
+        /// Finds the user-defined execution option name corresponding to a specific key
         /// </summary>
         public string GetUserExecuteOptionNameForKey(Keys key)
         {
@@ -259,7 +264,7 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 특정 키에 해당하는 사용자 실행 옵션 찾기
+        /// Finds the user-defined execution option corresponding to a specific key
         /// </summary>
         public UserExecuteOption GetUserExecuteOptionForKey(Keys key)
         {
@@ -276,7 +281,7 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 이름으로 사용자 실행 옵션 찾기
+        /// Finds the user-defined execution option by name
         /// </summary>
         public UserExecuteOption GetUserExecuteOptionByName(string name)
         {
@@ -289,39 +294,39 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 사용자 실행 옵션 추가 또는 업데이트
+        /// Adds or updates a user-defined execution option
         /// </summary>
         public void AddOrUpdateUserExecuteOption(UserExecuteOption option)
         {
-            // 기존 옵션 찾기
+            // Find existing option
             for (int i = 0; i < UserExecuteOptions.Count; i++)
             {
                 if (UserExecuteOptions[i].Name == option.Name)
                 {
-                    // 이름이 같은 옵션이 있으면 업데이트
+                    // If an option with the same name exists, update it
                     UserExecuteOptions[i] = option;
                     return;
                 }
             }
 
-            // 새 옵션 추가
+            // Add new option
             UserExecuteOptions.Add(option);
         }
 
         /// <summary>
-        /// 사용자 실행 옵션 제거
+        /// Removes a user-defined execution option
         /// </summary>
         public bool RemoveUserExecuteOption(string name)
         {
-            // 삭제할 옵션 찾기
+            // Find option to remove
             for (int i = 0; i < UserExecuteOptions.Count; i++)
             {
                 if (UserExecuteOptions[i].Name == name)
                 {
-                    // 옵션 제거
+                    // Remove option
                     UserExecuteOptions.RemoveAt(i);
 
-                    // 이 옵션을 사용하는 키 설정 업데이트
+                    // Update key settings that use this option
                     foreach (var setting in Settings)
                     {
                         if (setting.Action == KeyAction.UserExecute && setting.UserExecuteOptionName == name)
@@ -337,7 +342,7 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 설정을 파일에 저장
+        /// Saves settings to file
         /// </summary>
         public void Save()
         {
@@ -347,17 +352,17 @@ namespace TotalCommander
                 if (!Directory.Exists(directory))
                     Directory.CreateDirectory(directory);
 
-                // 디버깅용 메시지 - 저장 전 F5 키 설정 확인
+                // Debugging message - check F5 key setting before saving
                 string f5Debug = "";
                 foreach (var setting in Settings)
                 {
                     if (setting.Key == Keys.F5)
                     {
-                        f5Debug = $"저장 전 F5 키 설정: 액션={setting.Action}";
+                        f5Debug = $"Saving F5 key setting: Action={setting.Action}";
                         if (setting.Action == KeyAction.UserExecute)
-                            f5Debug += $", 옵션={setting.UserExecuteOptionName}";
-                        // 메시지 박스를 로그로 대체
-                        Logger.Info(f5Debug);
+                            f5Debug += $", Option={setting.UserExecuteOptionName}";
+                        // MessageBox replaced with log
+                        Logger.Information(f5Debug);
                         break;
                     }
                 }
@@ -368,7 +373,7 @@ namespace TotalCommander
                     serializer.Serialize(writer, this);
                 }
 
-                // 저장 후 즉시 파일을 다시 읽어서 확인
+                // Immediately read file after saving to verify
                 if (File.Exists(SettingsFilePath))
                 {
                     KeySettings verifySettings = null;
@@ -386,10 +391,11 @@ namespace TotalCommander
                             {
                                 if (setting.Key == Keys.F5)
                                 {
-                                    string verifyMsg = $"저장 후 F5 키 설정 확인: 액션={setting.Action}";
+                                    string verifyMsg = $"Saved F5 key setting verification: Action={setting.Action}";
                                     if (setting.Action == KeyAction.UserExecute)
-                                        verifyMsg += $", 옵션={setting.UserExecuteOptionName}";
-                                    //MessageBox.Show(verifyMsg, "설정 저장 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                        verifyMsg += $", Option={setting.UserExecuteOptionName}";
+                                    // MessageBox replaced with log
+                                    Logger.Information(verifyMsg);
                                     break;
                                 }
                             }
@@ -397,40 +403,46 @@ namespace TotalCommander
                     }
                     catch (Exception ex)
                     {
-                        // 로그에 기록하고 메시지 박스 표시
-                        Logger.Error(ex, "저장된 설정 파일 검증 중 오류");
-                        MessageBox.Show("저장된 설정 파일 검증 중 오류: " + ex.Message,
-                                      "설정 검증 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        // Log and show message box
+                        Logger.Error(ex, "Saved settings file verification failed");
+                        MessageBox.Show(
+                            StringResources.GetString("SavedSettingsVerificationError", ex.Message),
+                            StringResources.GetString("SettingsVerificationError"), 
+                            MessageBoxButtons.OK, 
+                            MessageBoxIcon.Error);
                     }
                 }
             }
             catch (Exception ex)
             {
-                // 로그에 기록하고 메시지 박스 표시
-                Logger.Error(ex, "설정을 저장하는 중 오류가 발생했습니다.");
-                MessageBox.Show("설정을 저장하는 중 오류가 발생했습니다: " + ex.Message,
-                              "설정 저장 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Log and show message box
+                Logger.Error(ex, "Error saving settings");
+                MessageBox.Show(
+                    StringResources.GetString("ErrorSavingSettings", ex.Message),
+                    StringResources.GetString("SettingsSaveError"), 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Error);
             }
         }
 
         /// <summary>
-        /// 파일에서 설정 불러오기
+        /// Loads settings from file
         /// </summary>
         public static KeySettings Load()
         {
-            // 설정 파일 경로
+            // Settings file path
             string settingsPath = SettingsFilePath;
             
-            // 디버깅 - 설정 파일 경로 확인 (메시지 박스를 로그로 대체)
-            Logger.Info($"설정 파일 경로: {settingsPath}");
-            Logger.Info($"파일 존재 여부: {File.Exists(settingsPath)}");
+            // Debugging - check settings file path (MessageBox replaced with log)
+            Logger.Information($"Settings file path: {settingsPath}");
+            Logger.Information($"File existence: {File.Exists(settingsPath)}");
             
             if (!File.Exists(settingsPath))
             {
                 KeySettings newSettings = new KeySettings();
-                // 중요: 여기서 기본값 설정하지 않음 - SetDefaults() 호출 제거
+                // Important: Do not set defaults here - remove SetDefaults() call from constructor
                 // newSettings.SetDefaults(); 
-                newSettings.Save(); // 설정 파일이 없으면 빈 설정으로 저장
+                newSettings.Save(); // Save empty settings if file doesn't exist
                 return newSettings;
             }
 
@@ -443,58 +455,64 @@ namespace TotalCommander
                     loadedSettings = (KeySettings)serializer.Deserialize(reader);
                 }
 
-                // 디버깅용 메시지 - 로드된 F5 키 설정 확인
+                // Debugging message - check loaded F5 key setting
                 if (loadedSettings != null)
                 {
-                    // 중요: 빈 설정 목록을 기본값으로 초기화하지 않음
+                    // Important: Do not initialize empty settings list to defaults
                     if (loadedSettings.Settings == null)
                         loadedSettings.Settings = new List<KeySetting>();
                         
                     if (loadedSettings.UserExecuteOptions == null)
                         loadedSettings.UserExecuteOptions = new List<UserExecuteOption>();
                         
-                    // F5 키 설정 확인
+                    // F5 key setting verification
                     bool hasF5Setting = false;
                     foreach (var setting in loadedSettings.Settings)
                     {
                         if (setting.Key == Keys.F5)
                         {
                             hasF5Setting = true;
-                            string loadMsg = $"로드된 F5 키 설정: 액션={setting.Action}";
+                            string loadMsg = $"Loaded F5 key setting: Action={setting.Action}";
                             if (setting.Action == KeyAction.UserExecute)
-                                loadMsg += $", 옵션={setting.UserExecuteOptionName}";
-                            // 메시지 박스를 로그로 대체
-                            Logger.Info(loadMsg);
+                                loadMsg += $", Option={setting.UserExecuteOptionName}";
+                            // MessageBox replaced with log
+                            Logger.Information(loadMsg);
                             break;
                         }
                     }
                     
-                    // F5 키 설정이 없으면 경고 표시
+                    // Warning if no F5 setting
                     if (!hasF5Setting)
                     {
-                        // 메시지 박스를 로그로 대체
-                        Logger.Warning("로드된 설정에 F5 키 설정이 없습니다!");
+                        // MessageBox replaced with log
+                        Logger.Warning("Loaded settings have no F5 key setting!");
                     }
                     
                     return loadedSettings;
                 }
                 else
                 {
-                    // 로그에 기록하고 메시지 박스 표시
-                    Logger.Error("설정을 로드했으나 null 값이 반환되었습니다.");
-                    MessageBox.Show("설정을 로드했으나 null 값이 반환되었습니다.",
-                                  "설정 로드 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    // Log and show message box
+                    Logger.Error("Loaded settings but null returned");
+                    MessageBox.Show(
+                        StringResources.GetString("NullSettingsReturned"),
+                        StringResources.GetString("SettingsLoadError"), 
+                        MessageBoxButtons.OK, 
+                        MessageBoxIcon.Error);
                     return new KeySettings();
                 }
             }
             catch (Exception ex)
             {
-                // 로그에 기록하고 메시지 박스 표시
-                Logger.Error(ex, "설정을 불러오는 중 오류가 발생했습니다.");
-                MessageBox.Show("설정을 불러오는 중 오류가 발생했습니다: " + ex.Message,
-                              "설정 불러오기 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Log and show message box
+                Logger.Error(ex, "Error loading settings");
+                MessageBox.Show(
+                    StringResources.GetString("ErrorLoadingSettings", ex.Message),
+                    StringResources.GetString("SettingsLoadError"), 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Error);
                 
-                // 오류 발생 시 설정 파일 백업 및 새 설정 생성
+                // Error occurs, backup settings file and create new settings
                 try
                 {
                     string backupPath = settingsPath + ".bak";
@@ -504,9 +522,9 @@ namespace TotalCommander
                         File.Delete(settingsPath);
                     }
                 }
-                catch { /* 백업 실패 무시 */ }
+                catch { /* Backup failure ignored */ }
 
-                return new KeySettings(); // 오류 발생 시 기본 설정 반환
+                return new KeySettings(); // Return default settings on error
             }
         }
     }

@@ -1,4 +1,6 @@
-﻿namespace TotalCommander
+using TotalCommander;
+
+namespace TotalCommander
 {
     partial class Form_TotalCommander
     {
@@ -215,4 +217,5 @@
         private System.Windows.Forms.ToolStripMenuItem functionKeysToolStripMenuItem;
     }
 }
+
 

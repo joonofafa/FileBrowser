@@ -2,26 +2,60 @@ using System;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
+using System.Collections.Generic;
+using TotalCommander;
 
 namespace TotalCommander
 {
     /// <summary>
-    /// 파일 기반 로깅 유틸리티 클래스
+    /// Log level enumeration
+    /// </summary>
+    public enum LogLevel
+    {
+        Debug = 0,      // Detailed information for debugging
+        Information = 1, // General information about application flow
+        Warning = 2,     // Potential issues that might cause problems
+        Error = 3,       // Errors that prevent normal operation
+        Critical = 4     // Critical errors that require immediate attention
+    }
+
+    /// <summary>
+    /// File-based logging utility class
     /// </summary>
     public static class Logger
     {
         private static readonly object _lock = new object();
         private static string _logFilePath;
         private static bool _isEnabled = true;
+        private static LogLevel _minimumLogLevel = LogLevel.Debug; // Log everything by default
+        private static List<string> _recentLogs = new List<string>(100); // Keep recent logs in memory
         
         /// <summary>
-        /// 로거를 초기화합니다. 애플리케이션 시작 시 호출해야 합니다.
+        /// Gets or sets the minimum log level to record
+        /// </summary>
+        public static LogLevel MinimumLogLevel
+        {
+            get { return _minimumLogLevel; }
+            set { _minimumLogLevel = value; }
+        }
+        
+        /// <summary>
+        /// Gets the recent logs
+        /// </summary>
+        public static IEnumerable<string> RecentLogs
+        {
+            get { return _recentLogs; }
+        }
+        
+        /// <summary>
+        /// Initialize the logger. Should be called at application startup.
         /// </summary>
         public static void Initialize()
         {
             try
             {
-                // 로그 디렉토리 생성 (Documents 폴더 아래 TotalCommander/Logs)
+                // Create log directory (under Documents folder TotalCommander/Logs)
                 string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
                 string logDirPath = Path.Combine(documentsPath, "TotalCommander", "Logs");
                 
@@ -30,11 +64,11 @@ namespace TotalCommander
                     Directory.CreateDirectory(logDirPath);
                 }
                 
-                // 날짜별 로그 파일 생성
+                // Create date-based log file
                 string today = DateTime.Now.ToString("yyyy-MM-dd");
                 _logFilePath = Path.Combine(logDirPath, $"log_{today}.txt");
                 
-                // 로그 파일이 존재하지 않으면 헤더 기록
+                // Write header if log file doesn't exist
                 if (!File.Exists(_logFilePath))
                 {
                     using (StreamWriter writer = new StreamWriter(_logFilePath, false, Encoding.UTF8))
@@ -46,76 +80,197 @@ namespace TotalCommander
                     }
                 }
                 
-                // 시작 로그 작성
-                Info("Logger initialized successfully");
+                // Write startup log
+                Information("Logger initialized successfully");
             }
             catch (Exception ex)
             {
                 _isEnabled = false;
-                System.Windows.Forms.MessageBox.Show($"로그 파일을 초기화하는 중 오류가 발생했습니다: {ex.Message}",
-                    "로깅 오류", System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
+                MessageBox.Show($"Error initializing log file: {ex.Message}",
+                    "Logging Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         
         /// <summary>
-        /// 정보 로그를 기록합니다.
+        /// Log a debug message
         /// </summary>
-        /// <param name="message">로그 메시지</param>
-        public static void Info(string message)
-        {
-            WriteLog("INFO", message);
-        }
-        
-        /// <summary>
-        /// 디버그 로그를 기록합니다.
-        /// </summary>
-        /// <param name="message">로그 메시지</param>
+        /// <param name="message">Log message</param>
         public static void Debug(string message)
         {
-            WriteLog("DEBUG", message);
+            WriteLog(LogLevel.Debug, message);
         }
         
         /// <summary>
-        /// 경고 로그를 기록합니다.
+        /// Log an information message
         /// </summary>
-        /// <param name="message">로그 메시지</param>
+        /// <param name="message">Log message</param>
+        public static void Information(string message)
+        {
+            WriteLog(LogLevel.Information, message);
+        }
+        
+        /// <summary>
+        /// Log an information message and show it in a message box
+        /// </summary>
+        /// <param name="message">Log message</param>
+        /// <param name="title">Message box title</param>
+        public static void InformationWithDialog(string message, string title = "Information")
+        {
+            Information($"[DIALOG] {message}");
+            
+            Form activeForm = Form.ActiveForm;
+            if (activeForm != null)
+            {
+                CustomDialogHelper.ShowMessageBox(activeForm, message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        
+        /// <summary>
+        /// Log a warning message
+        /// </summary>
+        /// <param name="message">Log message</param>
         public static void Warning(string message)
         {
-            WriteLog("WARNING", message);
+            WriteLog(LogLevel.Warning, message);
         }
         
         /// <summary>
-        /// 오류 로그를 기록합니다.
+        /// Log a warning message and show it in a message box
         /// </summary>
-        /// <param name="message">로그 메시지</param>
+        /// <param name="message">Log message</param>
+        /// <param name="title">Message box title</param>
+        public static void WarningWithDialog(string message, string title = "Warning")
+        {
+            Warning($"[DIALOG] {message}");
+            
+            Form activeForm = Form.ActiveForm;
+            if (activeForm != null)
+            {
+                CustomDialogHelper.ShowMessageBox(activeForm, message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            else
+            {
+                MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+        
+        /// <summary>
+        /// Log an error message
+        /// </summary>
+        /// <param name="message">Log message</param>
         public static void Error(string message)
         {
-            WriteLog("ERROR", message);
+            WriteLog(LogLevel.Error, message);
         }
         
         /// <summary>
-        /// 오류 로그를 기록합니다.
+        /// Log an error message and show it in a message box
         /// </summary>
-        /// <param name="ex">발생한 예외</param>
-        /// <param name="message">추가 메시지 (선택사항)</param>
+        /// <param name="message">Log message</param>
+        /// <param name="title">Message box title</param>
+        public static void ErrorWithDialog(string message, string title = "Error")
+        {
+            Error($"[DIALOG] {message}");
+            
+            Form activeForm = Form.ActiveForm;
+            if (activeForm != null)
+            {
+                CustomDialogHelper.ShowMessageBox(activeForm, message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else
+            {
+                MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        /// <summary>
+        /// Log an error message with exception details
+        /// </summary>
+        /// <param name="ex">Exception that occurred</param>
+        /// <param name="message">Additional message (optional)</param>
         public static void Error(Exception ex, string message = null)
         {
             string errorMessage = string.IsNullOrEmpty(message) ? 
                 $"Exception: {ex.Message}" : 
                 $"{message} - Exception: {ex.Message}";
             
-            WriteLog("ERROR", errorMessage);
-            WriteLog("ERROR", $"StackTrace: {ex.StackTrace}");
+            WriteLog(LogLevel.Error, errorMessage);
+            WriteLog(LogLevel.Error, $"StackTrace: {ex.StackTrace}");
+            
+            // Log inner exception if present
+            if (ex.InnerException != null)
+            {
+                WriteLog(LogLevel.Error, $"Inner Exception: {ex.InnerException.Message}");
+                WriteLog(LogLevel.Error, $"Inner StackTrace: {ex.InnerException.StackTrace}");
+            }
         }
         
         /// <summary>
-        /// 멀티라인 디버그 로그를 기록합니다.
+        /// Log an error with exception details and show it in a message box
         /// </summary>
-        /// <param name="title">로그 제목</param>
-        /// <param name="content">여러 줄의 내용</param>
+        /// <param name="ex">Exception that occurred</param>
+        /// <param name="message">Additional message (optional)</param>
+        /// <param name="title">Message box title</param>
+        public static void ErrorWithDialog(Exception ex, string message = null, string title = "Error")
+        {
+            string errorMessage = string.IsNullOrEmpty(message) ? 
+                $"Exception: {ex.Message}" : 
+                $"{message}\n\nDetails: {ex.Message}";
+            
+            Error(ex, $"[DIALOG] {(message ?? string.Empty)}");
+            
+            Form activeForm = Form.ActiveForm;
+            if (activeForm != null)
+            {
+                CustomDialogHelper.ShowMessageBox(activeForm, errorMessage, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else
+            {
+                MessageBox.Show(errorMessage, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        /// <summary>
+        /// Log a critical error message
+        /// </summary>
+        /// <param name="message">Log message</param>
+        public static void Critical(string message)
+        {
+            WriteLog(LogLevel.Critical, message);
+        }
+        
+        /// <summary>
+        /// Log a critical error message and show it in a message box
+        /// </summary>
+        /// <param name="message">Log message</param>
+        /// <param name="title">Message box title</param>
+        public static void CriticalWithDialog(string message, string title = "Critical Error")
+        {
+            Critical($"[DIALOG] {message}");
+            
+            Form activeForm = Form.ActiveForm;
+            if (activeForm != null)
+            {
+                CustomDialogHelper.ShowMessageBox(activeForm, message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else
+            {
+                MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        
+        /// <summary>
+        /// Log a multiline debug message
+        /// </summary>
+        /// <param name="title">Log title</param>
+        /// <param name="content">Multiline content</param>
         public static void DebugMultiline(string title, string content)
         {
-            if (!_isEnabled || string.IsNullOrEmpty(_logFilePath))
+            if (!_isEnabled || string.IsNullOrEmpty(_logFilePath) || LogLevel.Debug < _minimumLogLevel)
                 return;
                 
             try
@@ -124,45 +279,109 @@ namespace TotalCommander
                 {
                     using (StreamWriter writer = new StreamWriter(_logFilePath, true, Encoding.UTF8))
                     {
-                        writer.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [DEBUG] --- {title} ---");
+                        string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [DEBUG] --- {title} ---";
+                        writer.WriteLine(logEntry);
                         writer.WriteLine(content);
                         writer.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [DEBUG] --- End of {title} ---");
                         writer.WriteLine();
+                        
+                        // Add to recent logs
+                        AddToRecentLogs(logEntry);
+                        AddToRecentLogs($"Content: {content.Length} characters");
                     }
                 }
             }
             catch
             {
-                // 로그 작성 실패 시 조용히 무시
+                // Silently fail if logging fails
                 _isEnabled = false;
             }
         }
         
         /// <summary>
-        /// 로그를 파일에 기록합니다.
+        /// Write a log entry to the file
         /// </summary>
-        /// <param name="level">로그 레벨</param>
-        /// <param name="message">로그 메시지</param>
-        private static void WriteLog(string level, string message)
+        /// <param name="level">Log level</param>
+        /// <param name="message">Log message</param>
+        private static void WriteLog(LogLevel level, string message)
         {
-            if (!_isEnabled || string.IsNullOrEmpty(_logFilePath))
+            // Skip if logging is disabled or level is below minimum
+            if (!_isEnabled || string.IsNullOrEmpty(_logFilePath) || level < _minimumLogLevel)
                 return;
                 
             try
             {
                 lock (_lock)
                 {
+                    string levelText = level.ToString().ToUpper();
+                    string logEntry = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{levelText}] {message}";
+                    
                     using (StreamWriter writer = new StreamWriter(_logFilePath, true, Encoding.UTF8))
                     {
-                        writer.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{level}] {message}");
+                        writer.WriteLine(logEntry);
                     }
+                    
+                    // Add to recent logs
+                    AddToRecentLogs(logEntry);
                 }
             }
             catch
             {
-                // 로그 작성 실패 시 조용히 무시
+                // Silently fail if logging fails
                 _isEnabled = false;
             }
+        }
+        
+        /// <summary>
+        /// Add a log entry to the recent logs collection
+        /// </summary>
+        /// <param name="logEntry">Log entry to add</param>
+        private static void AddToRecentLogs(string logEntry)
+        {
+            lock (_recentLogs)
+            {
+                _recentLogs.Add(logEntry);
+                
+                // Keep only the most recent logs (limit to 100)
+                while (_recentLogs.Count > 100)
+                {
+                    _recentLogs.RemoveAt(0);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Flush all pending log entries and close the log file
+        /// </summary>
+        public static void Shutdown()
+        {
+            if (_isEnabled)
+            {
+                Information("Logger shutdown");
+            }
+        }
+        
+        /// <summary>
+        /// Shows a confirmation dialog and returns true if user selects Yes.
+        /// </summary>
+        /// <param name="message">Message to display</param>
+        /// <param name="title">Dialog title</param>
+        /// <returns>True if user confirms, false otherwise</returns>
+        public static bool Confirm(string message, string title = "Confirmation")
+        {
+            Form activeForm = Form.ActiveForm;
+            DialogResult result;
+            
+            if (activeForm != null)
+            {
+                result = CustomDialogHelper.ShowMessageBox(activeForm, message, title, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            }
+            else
+            {
+                result = MessageBox.Show(message, title, MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            }
+            
+            return result == DialogResult.Yes;
         }
     }
 } 

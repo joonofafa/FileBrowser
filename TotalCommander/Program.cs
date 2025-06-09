@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using System.IO;
 using System.Runtime.InteropServices;
+using TotalCommander;
 
 namespace TotalCommander
 {
@@ -17,9 +18,9 @@ namespace TotalCommander
         {
             try
             {
-                // 로거 초기화
+                // Initialize logger
                 Logger.Initialize();
-                Logger.Info("Application starting...");
+                Logger.Information("Application starting...");
                 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
@@ -28,7 +29,7 @@ namespace TotalCommander
                 Form_TotalCommander form = new Form_TotalCommander();
                 Application.Run(form);
                 
-                Logger.Info("Application shutting down gracefully");
+                Logger.Information("Application shutting down gracefully");
             }
             catch (Exception ex)
             {
@@ -39,14 +40,14 @@ namespace TotalCommander
         }
         
         /// <summary>
-        /// 필요한 라이브러리를 로드합니다.
+        /// Loads required libraries.
         /// </summary>
         private static void LoadStartupLibraryDLL()
         {
             try
             {
-                // 아이콘 로드에 필요한 Shell32.dll 초기화
-                // 여기에 필요한 DLL 로드 관련 코드를 추가할 수 있습니다
+                // Initialize Shell32.dll required for Explorer functionality
+                // Additional DLL loading code can be added here
                 Logger.Debug("DLL libraries loaded successfully");
             }
             catch (Exception ex)
@@ -56,3 +57,4 @@ namespace TotalCommander
         }
     }
 }
+

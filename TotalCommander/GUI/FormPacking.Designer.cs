@@ -1,4 +1,6 @@
-﻿namespace TotalCommander.GUI
+using TotalCommander;
+
+namespace TotalCommander.GUI
 {
     partial class FormPacking
     {
@@ -72,7 +74,7 @@
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(50, 15);
             this.label1.TabIndex = 0;
-            this.label1.Text = "Archive:";
+            this.label1.Text = StringResources.GetString("Archive");
             // 
             // lblSaveFilePath
             // 
@@ -81,7 +83,7 @@
             this.lblSaveFilePath.Name = "lblSaveFilePath";
             this.lblSaveFilePath.Size = new System.Drawing.Size(31, 15);
             this.lblSaveFilePath.TabIndex = 1;
-            this.lblSaveFilePath.Text = "Path";
+            this.lblSaveFilePath.Text = StringResources.GetString("Path");
             // 
             // txtFileName
             // 
@@ -97,7 +99,7 @@
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(89, 15);
             this.label2.TabIndex = 4;
-            this.label2.Text = "Archive format:";
+            this.label2.Text = StringResources.GetString("ArchiveDestination");
             // 
             // label3
             // 
@@ -106,7 +108,7 @@
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(107, 15);
             this.label3.TabIndex = 5;
-            this.label3.Text = "Compression level:";
+            this.label3.Text = StringResources.GetString("CompressionLevel");
             // 
             // cboArchiveFormat
             // 
@@ -268,7 +270,6 @@
             // btnShowPassword
             // 
             this.btnShowPassword.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnShowPassword.Image = global::TotalCommander.Properties.Resources.Show_Password_24;
             this.btnShowPassword.Location = new System.Drawing.Point(259, -1);
             this.btnShowPassword.Margin = new System.Windows.Forms.Padding(0);
             this.btnShowPassword.Name = "btnShowPassword";
@@ -298,52 +299,34 @@
             // 
             // btnOK
             // 
-            this.btnOK.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
-            this.btnOK.AutoSize = true;
-            this.btnOK.BackColor = System.Drawing.Color.Green;
-            this.btnOK.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnOK.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnOK.ForeColor = System.Drawing.SystemColors.Window;
-            this.btnOK.Location = new System.Drawing.Point(24, 246);
-            this.btnOK.Margin = new System.Windows.Forms.Padding(0);
+            this.btnOK.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnOK.Location = new System.Drawing.Point(473, 305);
             this.btnOK.Name = "btnOK";
-            this.btnOK.Size = new System.Drawing.Size(55, 27);
-            this.btnOK.TabIndex = 17;
-            this.btnOK.Text = "OK";
-            this.btnOK.UseVisualStyleBackColor = false;
+            this.btnOK.Size = new System.Drawing.Size(75, 23);
+            this.btnOK.TabIndex = 18;
+            this.btnOK.Text = StringResources.GetString("StartCompression");
+            this.btnOK.UseVisualStyleBackColor = true;
             // 
             // btnCancel
             // 
-            this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
-            this.btnCancel.AutoSize = true;
-            this.btnCancel.BackColor = System.Drawing.Color.Red;
-            this.btnCancel.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnCancel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnCancel.ForeColor = System.Drawing.SystemColors.Window;
-            this.btnCancel.Location = new System.Drawing.Point(132, 246);
-            this.btnCancel.Margin = new System.Windows.Forms.Padding(0);
+            this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+            this.btnCancel.Location = new System.Drawing.Point(554, 305);
             this.btnCancel.Name = "btnCancel";
-            this.btnCancel.Size = new System.Drawing.Size(55, 27);
-            this.btnCancel.TabIndex = 18;
-            this.btnCancel.Text = "Cancel";
-            this.btnCancel.UseVisualStyleBackColor = false;
+            this.btnCancel.Size = new System.Drawing.Size(75, 23);
+            this.btnCancel.TabIndex = 19;
+            this.btnCancel.Text = StringResources.GetString("Cancel");
+            this.btnCancel.UseVisualStyleBackColor = true;
             // 
             // btnOpenSaveDialog
             // 
-            this.btnOpenSaveDialog.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
-            this.btnOpenSaveDialog.AutoSize = true;
-            this.btnOpenSaveDialog.BackColor = System.Drawing.Color.Green;
-            this.btnOpenSaveDialog.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnOpenSaveDialog.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnOpenSaveDialog.ForeColor = System.Drawing.SystemColors.Window;
-            this.btnOpenSaveDialog.Location = new System.Drawing.Point(582, 19);
-            this.btnOpenSaveDialog.Margin = new System.Windows.Forms.Padding(0);
+            this.btnOpenSaveDialog.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnOpenSaveDialog.Location = new System.Drawing.Point(584, 22);
             this.btnOpenSaveDialog.Name = "btnOpenSaveDialog";
-            this.btnOpenSaveDialog.Size = new System.Drawing.Size(28, 27);
-            this.btnOpenSaveDialog.TabIndex = 19;
-            this.btnOpenSaveDialog.TabStop = false;
-            this.btnOpenSaveDialog.Text = "...";
-            this.btnOpenSaveDialog.UseVisualStyleBackColor = false;
+            this.btnOpenSaveDialog.Size = new System.Drawing.Size(45, 23);
+            this.btnOpenSaveDialog.TabIndex = 21;
+            this.btnOpenSaveDialog.Text = StringResources.GetString("Browse");
+            this.btnOpenSaveDialog.UseVisualStyleBackColor = true;
             // 
             // panel2
             // 

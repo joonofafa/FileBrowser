@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using TotalCommander;
 
 namespace TotalCommander.GUI
 {
@@ -9,7 +10,7 @@ namespace TotalCommander.GUI
         #region Fields
         //private ListViewColumnSorter m_ColumnSorter = new ListViewColumnSorter();
         
-        // 컬럼 너비 저장 관련 이벤트
+        // Column width change event
         public new event EventHandler ColumnWidthChanged;
         #endregion Fields
 
@@ -17,39 +18,39 @@ namespace TotalCommander.GUI
 
         protected override bool IsInputKey(Keys keyData)
         {
-            // 키 이벤트 로깅 추가
-            Logger.Debug($"FileBrowser.IsInputKey 호출: keyData={keyData}");
+            // Add key event logging
+            Logger.Debug($"FileBrowser.IsInputKey called: keyData={keyData}");
             
-            // 명시적으로 스페이스 키 처리
+            // Special handling for Space key
             if (keyData == Keys.Space)
             {
-                Logger.Debug("FileBrowser.IsInputKey: Space 키 직접 처리");
+                Logger.Debug("FileBrowser.IsInputKey: Space key custom handling");
                 return true;
             }
             
-            // 나머지는 기본 처리
+            // Default handling for other keys
             return base.IsInputKey(keyData);
         }
         
-        // 메시지 전처리를 위한 메서드 오버라이드
+        // Custom processing for messages
         public override bool PreProcessMessage(ref Message msg)
         {
             const int WM_KEYDOWN = 0x0100;
             const int VK_SPACE = 0x20;
             
-            // 스페이스 키에 대한 WM_KEYDOWN 메시지 확인
+            // Check if Space key is pressed
             if (msg.Msg == WM_KEYDOWN && msg.WParam.ToInt32() == VK_SPACE)
             {
-                Logger.Debug("FileBrowser.PreProcessMessage: Space 키 메시지 감지");
+                Logger.Debug("FileBrowser.PreProcessMessage: Space key pressed");
                 
-                // 키 다운 이벤트를 수동으로 발생
+                // Simulate key press for Space key
                 var e = new KeyEventArgs(Keys.Space);
                 this.OnKeyDown(e);
                 
-                // 이벤트가 처리되었으면 true 반환
+                // Return true if Space key was handled
                 if (e.Handled)
                 {
-                    Logger.Debug("FileBrowser.PreProcessMessage: Space 키 이벤트 처리 완료");
+                    Logger.Debug("FileBrowser.PreProcessMessage: Space key handled");
                     return true;
                 }
             }
@@ -84,57 +85,57 @@ namespace TotalCommander.GUI
         //}
         #endregion
 
-        // 항목을 선택하는 메서드
+        // Custom method to select an item
         private void SelectItem(int itemIndex)
         {
-            Logger.Debug($"FileBrowser.SelectItem: 인덱스={itemIndex}");
+            Logger.Debug($"FileBrowser.SelectItem: itemIndex={itemIndex}");
             
             if (itemIndex < 0 || itemIndex >= this.Items.Count)
             {
-                Logger.Debug("FileBrowser.SelectItem: 유효하지 않은 인덱스");
+                Logger.Debug("FileBrowser.SelectItem: Invalid item index");
                 return;
             }
             
-            // BeginUpdate로 UI 갱신 일시 중지
+            // BeginUpdate to prevent UI from updating
             this.BeginUpdate();
             
             try
             {
-                // 항상 선택 상태로 설정
+                // Select the item
                 if (!this.SelectedIndices.Contains(itemIndex))
                 {
-                    Logger.Debug($"FileBrowser.SelectItem: 항목 선택 {itemIndex}");
+                    Logger.Debug($"FileBrowser.SelectItem: Selecting item {itemIndex}");
                     this.SelectedIndices.Add(itemIndex);
                     this.Items[itemIndex].Selected = true;
                 }
                 
-                // 포커스 유지
+                // Focus on the selected item
                 this.FocusedItem = this.Items[itemIndex];
                 
-                // 선택 변경 이벤트 수동 발생
+                // Raise event for selected index change
                 this.OnSelectedIndexChanged(EventArgs.Empty);
             }
             finally
             {
-                // EndUpdate로 UI 갱신 재개
+                // EndUpdate to allow UI to update
                 this.EndUpdate();
                 
-                // 변경 내용 화면에 강제 반영
+                // Invalidate and update the UI
                 this.Invalidate(true);
                 this.Update();
-                Application.DoEvents(); // UI 이벤트 처리 강제
+                Application.DoEvents(); // UI update handling
             }
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
-            // 키 이벤트 로깅 추가
+            // Add key event logging
             Logger.Debug($"FileBrowser.OnKeyDown: KeyCode={e.KeyCode}, KeyData={e.KeyData}, Handled={e.Handled}");
             
             switch (e.KeyData)
             {
                 case Keys.Control | Keys.A:
-                    Logger.Debug("FileBrowser: Ctrl+A 처리 - 모두 선택");
+                    Logger.Debug("FileBrowser: Ctrl+A key pressed - Select all");
                     for (int i = 0; i < this.VirtualListSize; i++)
                     {
                         this.SelectedIndices.Add(i);
@@ -143,36 +144,36 @@ namespace TotalCommander.GUI
                     e.Handled = true;
                     break;
                 case Keys.Space:
-                    Logger.Debug("FileBrowser: Space 키 처리 시작");
+                    Logger.Debug("FileBrowser: Space key pressed");
                     
-                    // 현재 포커스된 항목이 있으면 처리
+                    // Select the focused item if it exists
                     if (this.FocusedItem != null)
                     {
                         int focusedIndex = this.FocusedItem.Index;
-                        Logger.Debug($"FileBrowser: 포커스된 항목 인덱스={focusedIndex}");
+                        Logger.Debug($"FileBrowser: Focused item index={focusedIndex}");
                         
-                        // 1. 현재 항목 선택
+                        // 1. Select the focused item
                         SelectItem(focusedIndex);
                         
-                        // 2. 다음 항목으로 이동 (Down 키 효과)
+                        // 2. Select the next item (Down arrow key)
                         if (focusedIndex < this.Items.Count - 1)
                         {
                             int nextIndex = focusedIndex + 1;
                             this.FocusedItem = this.Items[nextIndex];
                             this.EnsureVisible(nextIndex);
-                            Logger.Debug($"FileBrowser: 다음 항목으로 이동 {nextIndex}");
+                            Logger.Debug($"FileBrowser: Selected next item {nextIndex}");
                         }
                         
                         e.Handled = true;
-                        Logger.Debug("FileBrowser: Space 키 처리 완료, e.Handled=true");
+                        Logger.Debug("FileBrowser: Space key handled, e.Handled=true");
                     }
                     else if (this.Items.Count > 0 && this.SelectedIndices.Count == 0)
                     {
-                        // 선택된 항목이 없으면 첫 번째 항목 선택
-                        Logger.Debug("FileBrowser: 첫 번째 항목 선택");
+                        // Select the first item if no items are selected
+                        Logger.Debug("FileBrowser: Selecting first item");
                         SelectItem(0);
                         
-                        // 두 번째 항목으로 이동 (있는 경우)
+                        // Select the second item (if exists)
                         if (this.Items.Count > 1)
                         {
                             this.FocusedItem = this.Items[1];
@@ -184,19 +185,19 @@ namespace TotalCommander.GUI
                     break;
             }
             
-            // 베이스 클래스 메서드 호출하기 전에 이벤트가 처리되었는지 확인
+            // Raise base class OnKeyDown method if not handled
             if (!e.Handled)
             {
                 base.OnKeyDown(e);
             }
         }
         
-        // 컬럼 너비 변경 감지를 위한 메서드 오버라이드
+        // Column width change handling
         protected override void OnColumnWidthChanged(ColumnWidthChangedEventArgs e)
         {
             base.OnColumnWidthChanged(e);
             
-            // 외부 이벤트 핸들러에게 변경 사항 통보
+            // Notify column width change
             ColumnWidthChanged?.Invoke(this, EventArgs.Empty);
         }
 
@@ -232,9 +233,9 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// 컬럼 너비 설정을 적용합니다.
+        /// Apply column widths to the ListView
         /// </summary>
-        /// <param name="columnWidths">컬럼 인덱스를 키로, 너비를 값으로 하는 딕셔너리</param>
+        /// <param name="columnWidths">Dictionary of column indices and widths</param>
         public void ApplyColumnWidths(Dictionary<int, int> columnWidths)
         {
             if (columnWidths == null || this.View != View.Details || this.Columns.Count == 0)
@@ -253,9 +254,9 @@ namespace TotalCommander.GUI
         }
         
         /// <summary>
-        /// 현재 컬럼 너비 설정을 가져옵니다.
+        /// Get column widths from the ListView
         /// </summary>
-        /// <returns>컬럼 인덱스를 키로, 너비를 값으로 하는 딕셔너리</returns>
+        /// <returns>Dictionary of column indices and widths</returns>
         public Dictionary<int, int> GetColumnWidths()
         {
             Dictionary<int, int> columnWidths = new Dictionary<int, int>();
@@ -302,10 +303,11 @@ namespace TotalCommander.GUI
                 int tmp = this.Width - total;
                 this.Columns[0].Width = (tmp > 60) ? tmp : 60;
                 
-                // 크기 변경 후 컬럼 너비 변경 이벤트 발생
+                // Notify column width change
                 ColumnWidthChanged?.Invoke(this, EventArgs.Empty);
             }
         }
         
     }
 }
+

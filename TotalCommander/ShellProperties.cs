@@ -1,15 +1,16 @@
 using System;
 using System.Runtime.InteropServices;
+using TotalCommander;
 
 namespace TotalCommander
 {
     /// <summary>
-    /// 파일 속성 대화 상자를 표시하는 유틸리티 클래스
+    /// Utility class for displaying file properties dialog
     /// </summary>
     public static class ShellProperties
     {
         /// <summary>
-        /// 파일 속성 대화 상자를 표시하는 Win32 API 함수
+        /// Win32 API function to display file properties dialog
         /// </summary>
         [DllImport("shell32.dll", CharSet = CharSet.Auto)]
         private static extern bool ShellExecuteEx(ref SHELLEXECUTEINFO lpExecInfo);
@@ -43,9 +44,9 @@ namespace TotalCommander
         private const uint SEE_MASK_INVOKEIDLIST = 0xC;
 
         /// <summary>
-        /// 단일 파일의 속성 대화 상자를 표시합니다.
+        /// Display properties dialog for a single file
         /// </summary>
-        /// <param name="fileName">표시할 파일 경로</param>
+        /// <param name="fileName">Path to the file to display properties for</param>
         public static bool ShowFileProperties(string fileName)
         {
             SHELLEXECUTEINFO info = new SHELLEXECUTEINFO();
@@ -58,9 +59,9 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 여러 파일의 속성 대화 상자를 표시합니다.
+        /// Display properties dialog for multiple files
         /// </summary>
-        /// <param name="fileNames">표시할 파일 경로 배열</param>
+        /// <param name="fileNames">Array of file paths to display properties for</param>
         public static bool ShowFileProperties(string[] fileNames)
         {
             if (fileNames == null || fileNames.Length == 0)
@@ -69,9 +70,9 @@ namespace TotalCommander
             if (fileNames.Length == 1)
                 return ShowFileProperties(fileNames[0]);
 
-            // 여러 파일의 경우, 첫 번째 파일로 다중 선택 속성 대화 상자를 표시합니다.
-            // 실제로는 완벽한 다중 선택 속성 대화 상자를 구현하기 위해서는 Shell COM 인터페이스를 사용해야 합니다.
-            // 이 구현은 단순화된 버전입니다.
+            // For multiple files, currently only shows properties for the first file
+            // To properly implement multi-selection properties dialog, Shell COM interface should be used
+            // This is a simplified version
             return ShowFileProperties(fileNames[0]);
         }
     }

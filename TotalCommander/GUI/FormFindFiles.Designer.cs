@@ -1,4 +1,6 @@
-﻿namespace TotalCommander.GUI
+using TotalCommander;
+
+namespace TotalCommander.GUI
 {
     partial class FormFindFiles
     {

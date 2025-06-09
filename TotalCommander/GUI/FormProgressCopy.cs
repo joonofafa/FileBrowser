@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.VisualBasic.FileIO;
+using TotalCommander;
 
 namespace TotalCommander.GUI
 {
@@ -31,10 +32,13 @@ namespace TotalCommander.GUI
             isCut = cut;
             totalFiles = files.Length;
 
-            // 복사할 총 바이트 수 계산
+            // Calculate total bytes to copy
             CalculateTotalBytes();
             
-            // Load 이벤트 핸들러 등록
+            // 커스텀 진행 대화 상자를 표시하지 않음
+            this.Visible = false;
+            
+            // Register Load event handler
             this.Load += FormProgressCopy_Load;
         }
 
@@ -54,7 +58,7 @@ namespace TotalCommander.GUI
             this.lblTitle.Name = "lblTitle";
             this.lblTitle.Size = new System.Drawing.Size(74, 21);
             this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "파일 복사";
+            this.lblTitle.Text = StringResources.GetString("FileCopyTitle");
             // 
             // progressBar
             // 
@@ -74,7 +78,7 @@ namespace TotalCommander.GUI
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(372, 23);
             this.lblStatus.TabIndex = 2;
-            this.lblStatus.Text = "준비 중...";
+            this.lblStatus.Text = StringResources.GetString("Preparing");
             // 
             // btnCancel
             // 
@@ -83,7 +87,7 @@ namespace TotalCommander.GUI
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 3;
-            this.btnCancel.Text = "취소";
+            this.btnCancel.Text = StringResources.GetString("Cancel");
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
             // 
@@ -101,7 +105,8 @@ namespace TotalCommander.GUI
             this.MinimizeBox = false;
             this.Name = "FormProgressCopy";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "파일 복사";
+            this.Text = StringResources.GetString("FileCopyTitle");
+            this.ShowInTaskbar = false;
             this.ResumeLayout(false);
             this.PerformLayout();
         }
@@ -114,7 +119,7 @@ namespace TotalCommander.GUI
         private bool isCancelled = false;
 
         /// <summary>
-        /// 작업이 취소되었는지 여부
+        /// Whether the operation was cancelled
         /// </summary>
         public bool IsCancelled
         {
@@ -122,7 +127,7 @@ namespace TotalCommander.GUI
         }
 
         /// <summary>
-        /// 진행률 설정 (0-100)
+        /// Set progress (0-100)
         /// </summary>
         public void SetProgress(int percent)
         {
@@ -136,7 +141,7 @@ namespace TotalCommander.GUI
         }
 
         /// <summary>
-        /// 상태 메시지 설정
+        /// Set status message
         /// </summary>
         public void SetStatus(string message)
         {
@@ -153,7 +158,7 @@ namespace TotalCommander.GUI
         {
             isCancelled = true;
             btnCancel.Enabled = false;
-            lblStatus.Text = "취소 중...";
+            lblStatus.Text = StringResources.GetString("Cancelling");
         }
 
         private void CalculateTotalBytes()
@@ -178,13 +183,13 @@ namespace TotalCommander.GUI
             long size = 0;
             DirectoryInfo dirInfo = new DirectoryInfo(directoryPath);
             
-            // 파일 크기 합산
+            // Calculate file sizes
             foreach (FileInfo fileInfo in dirInfo.GetFiles())
             {
                 size += fileInfo.Length;
             }
 
-            // 하위 디렉토리 크기 합산
+            // Calculate subdirectory sizes
             foreach (DirectoryInfo subDirInfo in dirInfo.GetDirectories())
             {
                 size += GetDirectorySize(subDirInfo.FullName);
@@ -193,9 +198,23 @@ namespace TotalCommander.GUI
             return size;
         }
 
+        /// <summary>
+        /// 대화 상자를 표시하지 않고 백그라운드에서 파일 처리를 수행합니다.
+        /// </summary>
+        public void ProcessFilesInBackground()
+        {
+            // 폼 초기화
+            lblStatus.Text = isCut ? StringResources.GetString("FileMoving") : StringResources.GetString("FileCopying");
+            progressBar.Maximum = 100;
+            progressBar.Value = 0;
+            
+            // 백그라운드에서 파일 처리 실행
+            Task.Run(() => ProcessFiles());
+        }
+
         private async void FormProgressCopy_Load(object sender, EventArgs e)
         {
-            lblStatus.Text = isCut ? "파일 이동 중..." : "파일 복사 중...";
+            lblStatus.Text = isCut ? StringResources.GetString("FileMoving") : StringResources.GetString("FileCopying");
             progressBar.Maximum = 100;
             progressBar.Value = 0;
 
@@ -231,20 +250,62 @@ namespace TotalCommander.GUI
                 {
                     if (File.Exists(source))
                     {
-                        UpdateUI($"{(isCut ? "이동" : "복사")} 중: {fileName}", fileName);
-                        PasteFile(source, target, UIOption.AllDialogs, UICancelOption.ThrowException);
-                        UpdateProgress(new FileInfo(source).Length);
+                        // Check if source and target are in the same directory
+                        bool isSameDirectory = Path.GetDirectoryName(source).Equals(destinationPath, StringComparison.OrdinalIgnoreCase);
+                        
+                        // If copying to the same directory, create a new filename with suffix
+                        if (isSameDirectory && !isCut)
+                        {
+                            string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                            string fileExt = Path.GetExtension(fileName);
+                            
+                            // Generate a unique filename by adding _(1), _(2), etc.
+                            int counter = 1;
+                            while (File.Exists(target))
+                            {
+                                target = Path.Combine(destinationPath, $"{fileNameWithoutExt}_({counter}){fileExt}");
+                                counter++;
+                            }
+                        }
+
+                        FileInfo sourceInfo = new FileInfo(source);
+                        UpdateUI(isCut ? StringResources.GetString("FileMoving") : StringResources.GetString("FileCopying"), sourceInfo.Name);
+
+                        // 시스템 대화 상자 표시
+                        PasteFile(source, target, UIOption.AllDialogs, UICancelOption.DoNothing);
+                        
+                        UpdateProgress(sourceInfo.Length);
                     }
                     else if (Directory.Exists(source))
                     {
-                        UpdateUI($"{(isCut ? "이동" : "복사")} 중: {fileName}", fileName);
-                        PasteDir(source, target, UIOption.AllDialogs, UICancelOption.ThrowException);
-                        UpdateProgress(GetDirectorySize(source));
+                        // Check if source and target are in the same directory
+                        bool isSameDirectory = Path.GetDirectoryName(source).Equals(destinationPath, StringComparison.OrdinalIgnoreCase);
+                        
+                        // If copying to the same directory, create a new directory name with suffix
+                        if (isSameDirectory && !isCut)
+                        {
+                            string dirName = Path.GetFileName(source);
+                            
+                            // Generate a unique directory name by adding _(1), _(2), etc.
+                            int counter = 1;
+                            while (Directory.Exists(target))
+                            {
+                                target = Path.Combine(destinationPath, $"{dirName}_({counter})");
+                                counter++;
+                            }
+                        }
+
+                        DirectoryInfo dirInfo = new DirectoryInfo(source);
+                        UpdateUI(isCut ? StringResources.GetString("FolderMoving") : StringResources.GetString("FolderCopying"), dirInfo.Name);
+
+                        // 시스템 대화 상자 표시
+                        PasteDir(source, target, UIOption.AllDialogs, UICancelOption.DoNothing);
+                        
+                        long dirSize = GetDirectorySize(source);
+                        UpdateProgress(dirSize);
                     }
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
+
+                    completedFiles++;
                 }
                 catch (Exception ex)
                 {
@@ -252,30 +313,34 @@ namespace TotalCommander.GUI
                     {
                         this.Invoke(new Action(() =>
                         {
-                            MessageBox.Show(this, $"오류: {ex.Message}", "작업 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            CustomDialogHelper.ShowMessageBox(this, StringResources.GetString("ErrorMessage", ex.Message),
+                                StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }));
                     }
                     else
                     {
-                        MessageBox.Show(this, $"오류: {ex.Message}", "작업 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        CustomDialogHelper.ShowMessageBox(this, StringResources.GetString("ErrorMessage", ex.Message),
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
-
-                completedFiles++;
             }
 
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action(() =>
                 {
-                    lblStatus.Text = cancelRequested ? "작업이 취소되었습니다." : "작업이 완료되었습니다.";
-                    lblStatus.Text = $"완료: {completedFiles}/{totalFiles} 파일";
+                    lblStatus.Text = cancelRequested ? 
+                        StringResources.GetString("OperationCancelled") : 
+                        StringResources.GetString("OperationCompleted");
+                    lblStatus.Text = StringResources.GetString("CompletedFiles", completedFiles, totalFiles);
                 }));
             }
             else
             {
-                lblStatus.Text = cancelRequested ? "작업이 취소되었습니다." : "작업이 완료되었습니다.";
-                lblStatus.Text = $"완료: {completedFiles}/{totalFiles} 파일";
+                lblStatus.Text = cancelRequested ? 
+                    StringResources.GetString("OperationCancelled") : 
+                    StringResources.GetString("OperationCompleted");
+                lblStatus.Text = StringResources.GetString("CompletedFiles", completedFiles, totalFiles);
             }
         }
 
@@ -289,15 +354,17 @@ namespace TotalCommander.GUI
                 this.Invoke(new Action(() =>
                 {
                     progressBar.Value = Math.Min(progressPercentage, 100);
-                    lblStatus.Text = $"완료: {completedFiles + 1}/{totalFiles} 파일, " +
-                                      $"{ShellBrowser.FormatBytes(copiedBytes)}/{ShellBrowser.FormatBytes(totalBytes)}";
+                    lblStatus.Text = StringResources.GetString("CompletedFilesPercent", 
+                        completedFiles + 1, totalFiles, 
+                        $"{ShellBrowser.FormatBytes(copiedBytes)}/{ShellBrowser.FormatBytes(totalBytes)}");
                 }));
             }
             else
             {
                 progressBar.Value = Math.Min(progressPercentage, 100);
-                lblStatus.Text = $"완료: {completedFiles + 1}/{totalFiles} 파일, " +
-                                  $"{ShellBrowser.FormatBytes(copiedBytes)}/{ShellBrowser.FormatBytes(totalBytes)}";
+                lblStatus.Text = StringResources.GetString("CompletedFilesPercent", 
+                    completedFiles + 1, totalFiles, 
+                    $"{ShellBrowser.FormatBytes(copiedBytes)}/{ShellBrowser.FormatBytes(totalBytes)}");
             }
         }
 

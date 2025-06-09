@@ -15,15 +15,15 @@ namespace TotalCommander.GUI
         private UserExecuteOption currentOption;
         private bool isEditing;
         
-        // 사용 가능한 파라미터 변수 목록
+        // Available parameter variables list
         private readonly Dictionary<string, string> parameterVariables = new Dictionary<string, string>
         {
-            { "{SelectedItemFullPath:LeftExplorer}", "왼쪽 파일 목록에서 선택된 항목의 전체 경로" },
-            { "{SelectedItemDirPath:LeftExplorer}", "왼쪽 파일 목록에서 선택된 항목의 디렉토리 경로" },
-            { "{SelectedItemFullPath:RightExplorer}", "오른쪽 파일 목록에서 선택된 항목의 전체 경로" },
-            { "{SelectedItemDirPath:RightExplorer}", "오른쪽 파일 목록에서 선택된 항목의 디렉토리 경로" },
-            { "{SelectedItemFullPath:FocusingExplorer}", "현재 포커싱된 파일표시창에 선택된 항목의 전체 경로" },
-            { "{SelectedItemDirPath:FocusingExplorer}", "현재 포커싱된 파일표시창에 선택된 항목의 디렉토리 경로" }
+            { "{SelectedItemFullPath:LeftExplorer}", StringResources.GetString("LeftSelectedItemPath") },
+            { "{SelectedItemDirPath:LeftExplorer}", StringResources.GetString("LeftSelectedItemDirPath") },
+            { "{SelectedItemFullPath:RightExplorer}", StringResources.GetString("RightSelectedItemPath") },
+            { "{SelectedItemDirPath:RightExplorer}", StringResources.GetString("RightSelectedItemDirPath") },
+            { "{SelectedItemFullPath:FocusingExplorer}", StringResources.GetString("FocusingSelectedItemPath") },
+            { "{SelectedItemDirPath:FocusingExplorer}", StringResources.GetString("FocusingSelectedItemDirPath") }
         };
 
         public FormUserExecuteOption(KeySettings settings)
@@ -40,7 +40,7 @@ namespace TotalCommander.GUI
             keySettings = settings;
             isEditing = true;
             
-            // 기존 옵션 불러오기
+            // Load existing option
             currentOption = keySettings.GetUserExecuteOptionByName(optionName);
             if (currentOption == null)
             {
@@ -73,7 +73,7 @@ namespace TotalCommander.GUI
             this.lblTitle.Name = "lblTitle";
             this.lblTitle.Size = new System.Drawing.Size(106, 21);
             this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "사용자 실행 옵션";
+            this.lblTitle.Text = StringResources.GetString("UserExecuteOptionTitle");
             // 
             // lblName
             // 
@@ -82,7 +82,7 @@ namespace TotalCommander.GUI
             this.lblName.Name = "lblName";
             this.lblName.Size = new System.Drawing.Size(81, 12);
             this.lblName.TabIndex = 1;
-            this.lblName.Text = "실행 옵션 이름:";
+            this.lblName.Text = StringResources.GetString("ExecuteOptionName");
             // 
             // txtName
             // 
@@ -100,7 +100,7 @@ namespace TotalCommander.GUI
             this.lblExecutable.Name = "lblExecutable";
             this.lblExecutable.Size = new System.Drawing.Size(57, 12);
             this.lblExecutable.TabIndex = 3;
-            this.lblExecutable.Text = "실행 옵션:";
+            this.lblExecutable.Text = StringResources.GetString("ExecutableOption");
             // 
             // txtExecutable
             // 
@@ -118,7 +118,7 @@ namespace TotalCommander.GUI
             this.btnBrowse.Name = "btnBrowse";
             this.btnBrowse.Size = new System.Drawing.Size(49, 23);
             this.btnBrowse.TabIndex = 5;
-            this.btnBrowse.Text = "선택";
+            this.btnBrowse.Text = StringResources.GetString("Browse");
             this.btnBrowse.UseVisualStyleBackColor = true;
             this.btnBrowse.Click += new System.EventHandler(this.btnBrowse_Click);
             // 
@@ -129,7 +129,7 @@ namespace TotalCommander.GUI
             this.lblParameters.Name = "lblParameters";
             this.lblParameters.Size = new System.Drawing.Size(61, 12);
             this.lblParameters.TabIndex = 6;
-            this.lblParameters.Text = "파라미터:";
+            this.lblParameters.Text = StringResources.GetString("Parameters");
             // 
             // txtParameters
             // 
@@ -146,7 +146,7 @@ namespace TotalCommander.GUI
             this.lblHint.Name = "lblHint";
             this.lblHint.Size = new System.Drawing.Size(428, 20);
             this.lblHint.TabIndex = 8;
-            this.lblHint.Text = "힌트: 아래 파라미터 변수를 클릭하면 파라미터 텍스트 창에 추가됩니다.";
+            this.lblHint.Text = StringResources.GetString("ParametersHint");
             // 
             // pnlVariables
             // 
@@ -166,7 +166,7 @@ namespace TotalCommander.GUI
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(75, 23);
             this.btnSave.TabIndex = 10;
-            this.btnSave.Text = "저장";
+            this.btnSave.Text = StringResources.GetString("Save");
             this.btnSave.UseVisualStyleBackColor = true;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
@@ -178,7 +178,7 @@ namespace TotalCommander.GUI
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 11;
-            this.btnCancel.Text = "취소";
+            this.btnCancel.Text = StringResources.GetString("Cancel");
             this.btnCancel.UseVisualStyleBackColor = true;
             // 
             // FormUserExecuteOption
@@ -204,8 +204,9 @@ namespace TotalCommander.GUI
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "FormUserExecuteOption";
+            this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "사용자 실행 옵션";
+            this.Text = StringResources.GetString("UserExecuteOptionTitle");
             this.Load += new System.EventHandler(this.FormUserExecuteOption_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -226,115 +227,107 @@ namespace TotalCommander.GUI
 
         private void FormUserExecuteOption_Load(object sender, EventArgs e)
         {
-            // 기존 옵션 값 설정
+            // Load current option data if editing
             if (currentOption != null)
             {
                 txtName.Text = currentOption.Name;
                 txtExecutable.Text = currentOption.ExecutablePath;
                 txtParameters.Text = currentOption.Parameters;
-            }
-
-            // 편집 모드인 경우 이름 필드 비활성화
-            if (isEditing)
-            {
-                txtName.ReadOnly = true;
-                txtName.BackColor = SystemColors.Control;
+                
+                // Disable name field if editing
+                if (isEditing)
+                {
+                    txtName.Enabled = false;
+                }
             }
             
-            // 파라미터 변수 패널 초기화
             InitializeParameterVariables();
         }
         
-        // 파라미터 변수 패널 초기화
         private void InitializeParameterVariables()
         {
-            int y = 10;
-            
-            // 각 파라미터 변수에 대한 링크 라벨 생성
+            // Initialize parameter variables panel
+            int y = 5;
             foreach (var variable in parameterVariables)
             {
-                var linkLabel = new LinkLabel
-                {
-                    Text = $"{variable.Key} - {variable.Value}",
-                    AutoSize = true,
-                    Location = new Point(10, y),
-                    LinkBehavior = LinkBehavior.HoverUnderline,
-                    Tag = variable.Key
-                };
+                LinkLabel link = new LinkLabel();
+                link.Text = variable.Key;
+                link.Tag = variable.Key;
+                link.Location = new Point(5, y);
+                link.AutoSize = true;
+                link.LinkClicked += LinkLabel_LinkClicked;
                 
-                // 클릭 이벤트 핸들러 등록
-                linkLabel.LinkClicked += LinkLabel_LinkClicked;
+                Label description = new Label();
+                description.Text = variable.Value;
+                description.Location = new Point(250, y);
+                description.AutoSize = true;
                 
-                // 패널에 추가
-                pnlVariables.Controls.Add(linkLabel);
+                pnlVariables.Controls.Add(link);
+                pnlVariables.Controls.Add(description);
                 
-                y += 25; // 다음 변수 위치 조정
+                y += 20;
             }
         }
         
-        // 링크 라벨 클릭 이벤트 처리
         private void LinkLabel_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            if (sender is LinkLabel linkLabel && linkLabel.Tag is string variableName)
+            // Add the variable to the parameters textbox
+            LinkLabel link = sender as LinkLabel;
+            if (link != null && link.Tag is string)
             {
-                // 현재 커서 위치에 변수 삽입
-                txtParameters.SelectedText = variableName;
-                
-                // 포커스 설정
+                txtParameters.Text += link.Tag.ToString() + " ";
                 txtParameters.Focus();
+                txtParameters.SelectionStart = txtParameters.Text.Length;
             }
         }
-
+        
         private void btnBrowse_Click(object sender, EventArgs e)
         {
-            using (OpenFileDialog dlg = new OpenFileDialog())
+            // Browse for executable
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Title = StringResources.GetString("SelectExecutableTitle");
+            dlg.Filter = StringResources.GetString("ExecutableFilter");
+            
+            if (dlg.ShowDialog() == DialogResult.OK)
             {
-                dlg.Title = "실행 파일 선택";
-                dlg.Filter = "실행 파일 (*.exe)|*.exe|모든 파일 (*.*)|*.*";
-                dlg.FilterIndex = 1;
-
-                if (dlg.ShowDialog() == DialogResult.OK)
-                {
-                    txtExecutable.Text = dlg.FileName;
-                }
+                txtExecutable.Text = dlg.FileName;
             }
         }
-
+        
         private void btnSave_Click(object sender, EventArgs e)
         {
-            // 유효성 검사
+            // Validate input
             if (string.IsNullOrWhiteSpace(txtName.Text))
             {
-                MessageBox.Show("실행 옵션 이름을 입력하세요.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(StringResources.GetString("ExecuteOptionNameRequired"), StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 txtName.Focus();
                 return;
             }
-
+            
             if (string.IsNullOrWhiteSpace(txtExecutable.Text))
             {
-                MessageBox.Show("실행 파일 경로를 입력하세요.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(StringResources.GetString("ExecutablePathRequired"), StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 txtExecutable.Focus();
                 return;
             }
-
-            // 이름 중복 검사 (편집 모드가 아닌 경우에만)
+            
+            // Check if name already exists when adding new option
             if (!isEditing && keySettings.GetUserExecuteOptionByName(txtName.Text) != null)
             {
-                MessageBox.Show("이미 같은 이름의 실행 옵션이 존재합니다.", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(StringResources.GetString("ExecuteOptionNameExists"), StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 txtName.Focus();
                 return;
             }
-
-            // 옵션 업데이트
+            
+            // Save option
             currentOption.Name = txtName.Text;
             currentOption.ExecutablePath = txtExecutable.Text;
             currentOption.Parameters = txtParameters.Text;
-
-            // 옵션 저장
+            
             keySettings.AddOrUpdateUserExecuteOption(currentOption);
-            keySettings.Save();
-
+            
             DialogResult = DialogResult.OK;
+            Close();
         }
     }
 } 

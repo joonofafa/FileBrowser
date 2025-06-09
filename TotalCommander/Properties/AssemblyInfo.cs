@@ -1,6 +1,7 @@
-ï»¿using System.Reflection;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using TotalCommander;
 
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
@@ -10,7 +11,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("15520599")]
 [assembly: AssemblyProduct("Total Commander")]
-[assembly: AssemblyCopyright("TranCaoPhap-MIT Â® License")]
+[assembly: AssemblyCopyright("TranCaoPhap-MIT ¢ç License")]
 [assembly: AssemblyTrademark("15520599-TranCaoPhap")]
 [assembly: AssemblyCulture("")]
 
@@ -34,3 +35,4 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("0.9.1.1")]
 [assembly: AssemblyFileVersion("0.9.1.1")]
+

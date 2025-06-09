@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using TotalCommander;
 
 namespace TotalCommander.GUI
 {
@@ -38,7 +39,7 @@ namespace TotalCommander.GUI
             this.lblTitle.Name = "lblTitle";
             this.lblTitle.Size = new System.Drawing.Size(142, 21);
             this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = "사용자 실행 옵션 관리";
+            this.lblTitle.Text = StringResources.GetString("ManageUserOptionsTitle");
             // 
             // lstOptions
             // 
@@ -61,7 +62,7 @@ namespace TotalCommander.GUI
             this.btnAdd.Name = "btnAdd";
             this.btnAdd.Size = new System.Drawing.Size(75, 23);
             this.btnAdd.TabIndex = 2;
-            this.btnAdd.Text = "추가...";
+            this.btnAdd.Text = StringResources.GetString("AddUserOption");
             this.btnAdd.UseVisualStyleBackColor = true;
             this.btnAdd.Click += new System.EventHandler(this.btnAdd_Click);
             // 
@@ -73,7 +74,7 @@ namespace TotalCommander.GUI
             this.btnEdit.Name = "btnEdit";
             this.btnEdit.Size = new System.Drawing.Size(75, 23);
             this.btnEdit.TabIndex = 3;
-            this.btnEdit.Text = "편집...";
+            this.btnEdit.Text = StringResources.GetString("EditUserOption");
             this.btnEdit.UseVisualStyleBackColor = true;
             this.btnEdit.Click += new System.EventHandler(this.btnEdit_Click);
             // 
@@ -85,7 +86,7 @@ namespace TotalCommander.GUI
             this.btnDelete.Name = "btnDelete";
             this.btnDelete.Size = new System.Drawing.Size(75, 23);
             this.btnDelete.TabIndex = 4;
-            this.btnDelete.Text = "삭제";
+            this.btnDelete.Text = StringResources.GetString("DeleteUserOption");
             this.btnDelete.UseVisualStyleBackColor = true;
             this.btnDelete.Click += new System.EventHandler(this.btnDelete_Click);
             // 
@@ -97,7 +98,7 @@ namespace TotalCommander.GUI
             this.btnClose.Name = "btnClose";
             this.btnClose.Size = new System.Drawing.Size(75, 23);
             this.btnClose.TabIndex = 5;
-            this.btnClose.Text = "닫기";
+            this.btnClose.Text = StringResources.GetString("Close");
             this.btnClose.UseVisualStyleBackColor = true;
             // 
             // FormManageUserOptions
@@ -115,7 +116,7 @@ namespace TotalCommander.GUI
             this.MinimumSize = new System.Drawing.Size(400, 300);
             this.Name = "FormManageUserOptions";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "사용자 실행 옵션 관리";
+            this.Text = StringResources.GetString("ManageUserOptionsTitle");
             this.Load += new System.EventHandler(this.FormManageUserOptions_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -131,7 +132,7 @@ namespace TotalCommander.GUI
 
         private void FormManageUserOptions_Load(object sender, EventArgs e)
         {
-            // 옵션 목록 불러오기
+            // Load option list
             RefreshOptionList();
         }
 
@@ -139,25 +140,25 @@ namespace TotalCommander.GUI
         {
             lstOptions.Items.Clear();
 
-            // 사용자 실행 옵션 목록 추가
+            // Add user execute options
             foreach (var option in keySettings.UserExecuteOptions)
             {
                 lstOptions.Items.Add(option.Name);
             }
 
-            // 버튼 상태 업데이트
+            // Update button states
             btnEdit.Enabled = btnDelete.Enabled = (lstOptions.SelectedIndex >= 0);
         }
 
         private void lstOptions_SelectedIndexChanged(object sender, EventArgs e)
         {
-            // 선택된 항목에 따라 버튼 상태 업데이트
+            // Update button states based on selection
             btnEdit.Enabled = btnDelete.Enabled = (lstOptions.SelectedIndex >= 0);
         }
 
         private void lstOptions_DoubleClick(object sender, EventArgs e)
         {
-            // 더블 클릭 시 편집 버튼 클릭과 동일한 동작
+            // Double-click acts like Edit button
             if (lstOptions.SelectedIndex >= 0)
             {
                 btnEdit_Click(sender, e);
@@ -166,12 +167,12 @@ namespace TotalCommander.GUI
 
         private void btnAdd_Click(object sender, EventArgs e)
         {
-            // 새 사용자 실행 옵션 추가
+            // Add new user execute option
             using (FormUserExecuteOption form = new FormUserExecuteOption(keySettings))
             {
                 if (form.ShowDialog(this) == DialogResult.OK)
                 {
-                    // 설정이 저장되었으므로 목록 새로고침
+                    // Settings saved, refresh list
                     RefreshOptionList();
                 }
             }
@@ -179,7 +180,7 @@ namespace TotalCommander.GUI
 
         private void btnEdit_Click(object sender, EventArgs e)
         {
-            // 선택된 사용자 실행 옵션 편집
+            // Edit selected user execute option
             if (lstOptions.SelectedIndex >= 0)
             {
                 string selectedOptionName = lstOptions.SelectedItem.ToString();
@@ -188,10 +189,10 @@ namespace TotalCommander.GUI
                 {
                     if (form.ShowDialog(this) == DialogResult.OK)
                     {
-                        // 설정이 저장되었으므로 목록 새로고침
+                        // Settings saved, refresh list
                         RefreshOptionList();
                         
-                        // 이전에 선택된 항목 다시 선택
+                        // Re-select previously selected item
                         int index = lstOptions.Items.IndexOf(selectedOptionName);
                         if (index >= 0)
                         {
@@ -204,28 +205,47 @@ namespace TotalCommander.GUI
 
         private void btnDelete_Click(object sender, EventArgs e)
         {
-            // 선택된 사용자 실행 옵션 삭제
+            // Delete selected user execute option
             if (lstOptions.SelectedIndex >= 0)
             {
                 string selectedOptionName = lstOptions.SelectedItem.ToString();
                 
-                // 삭제 확인
+                // Confirm deletion
                 DialogResult result = MessageBox.Show(
-                    $"'{selectedOptionName}' 옵션을 삭제하시겠습니까?\n\n이 옵션을 사용하는 모든 키 설정이 초기화됩니다.",
-                    "옵션 삭제 확인",
+                    StringResources.GetString("UserOptionDeleteConfirmation", selectedOptionName),
+                    StringResources.GetString("UserOptionDeleteConfirmationTitle"),
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question,
                     MessageBoxDefaultButton.Button2);
                 
                 if (result == DialogResult.Yes)
                 {
-                    // 옵션 삭제
-                    keySettings.RemoveUserExecuteOption(selectedOptionName);
-                    keySettings.Save();
-                    
-                    // 목록 새로고침
-                    RefreshOptionList();
+                    try
+                    {
+                        // Delete option
+                        keySettings.RemoveUserExecuteOption(selectedOptionName);
+                        keySettings.Save();
+                        
+                        // Refresh list
+                        RefreshOptionList();
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            StringResources.GetString("UserOptionDeleteError", ex.Message),
+                            StringResources.GetString("UserOptionError"),
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                    }
                 }
+            }
+            else
+            {
+                MessageBox.Show(
+                    StringResources.GetString("NoOptionSelected"),
+                    StringResources.GetString("UserOptionError"),
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Warning);
             }
         }
     }

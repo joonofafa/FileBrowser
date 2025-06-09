@@ -1,6 +1,7 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Windows.Forms;
+using TotalCommander;
 
 namespace TotalCommander.GUI
 {
@@ -59,7 +60,7 @@ namespace TotalCommander.GUI
                     switch (flag)
                     {
                         // Neither item is a folder => Compare names
-                        case 0: goto case 3; break;
+                        case 0: goto case 3;
                         // A is a folder, but B isn't => A < B
                         case 1: result = -1; break;
                         // B is a folder, but A isn't => A > B
@@ -163,3 +164,4 @@ namespace TotalCommander.GUI
         #endregion
     }
 }
+

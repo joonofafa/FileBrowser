@@ -10,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using TotalCommander;
 
 namespace TotalCommander.GUI
 {
@@ -17,7 +18,7 @@ namespace TotalCommander.GUI
     {
         #region Constants
 
-        // 압축 레벨 열거형
+        // Compression level enum
         private enum CompressionLevel
         {
             NoCompression = 0,
@@ -26,7 +27,7 @@ namespace TotalCommander.GUI
             SmallestSize = 9
         }
 
-        // 업데이트 모드 열거형
+        // Update mode enum
         private enum UpdateMode
         {
             Add = 0,
@@ -62,7 +63,7 @@ namespace TotalCommander.GUI
             FileList = filePaths;
             if (filePaths.Length > 0)
             {
-                // 기본 압축 파일 이름 설정 (첫 번째 파일이 있는 디렉토리에 생성)
+                // Set default archive name (create in the directory of the first file)
                 string directory = Path.GetDirectoryName(filePaths[0]);
                 DestArchive = Path.Combine(directory, "Archive.zip");
             }
@@ -83,7 +84,7 @@ namespace TotalCommander.GUI
             InitArchiveFormatComboBox();
             InitUpdateModeComboBox();
             
-            // UI 초기화
+            // Initialize UI
             progressBar1.Visible = false;
             lblStatus.Visible = false;
             timerProgress.Enabled = false;
@@ -98,7 +99,7 @@ namespace TotalCommander.GUI
         {
             using (SaveFileDialog saveFileDialog = new SaveFileDialog())
             {
-                saveFileDialog.Filter = "ZIP 파일 (*.zip)|*.zip|모든 파일 (*.*)|*.*";
+                saveFileDialog.Filter = "ZIP files (*.zip)|*.zip|All files (*.*)|*.*";
                 saveFileDialog.FilterIndex = 1;
                 saveFileDialog.RestoreDirectory = true;
                 saveFileDialog.FileName = "archive.zip";
@@ -114,30 +115,38 @@ namespace TotalCommander.GUI
         {
             if (string.IsNullOrWhiteSpace(txtFileName.Text))
             {
-                MessageBox.Show("압축 파일 경로를 지정해주세요.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    StringResources.GetString("ZipFileRequired"), 
+                    StringResources.GetString("Warning"), 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Warning);
                 return;
             }
 
             if (FileList == null || FileList.Length == 0)
             {
-                MessageBox.Show("압축할 파일이 없습니다.", "경고", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    StringResources.GetString("NoFilesToCompress"), 
+                    StringResources.GetString("Warning"), 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Warning);
                 return;
             }
 
-            // 압축 옵션 설정
+            // Set compression options
             CompressionLevel level = (CompressionLevel)((ComboBoxItem)cboCompressionLevel.SelectedItem).Value;
             
-            // 업데이트 모드 설정
+            // Set update mode
             UpdateMode updateMode = (UpdateMode)((ComboBoxItem)cboUpdateMode.SelectedItem).Value;
 
-            // UI 업데이트
+            // Update UI
             progressBar1.Value = 0;
             progressBar1.Visible = true;
-            lblStatus.Text = "압축 중...";
+            lblStatus.Text = StringResources.GetString("Compressing");
             lblStatus.Visible = true;
             timerProgress.Start();
             
-            // 압축 작업 시작
+            // Start compression
             CompressFiles(txtFileName.Text, FileList, level, updateMode);
         }
 
@@ -156,17 +165,17 @@ namespace TotalCommander.GUI
         {
             try
             {
-                // 백그라운드에서 압축 작업 수행
+                // Perform compression in background
                 BackgroundWorker worker = new BackgroundWorker();
                 worker.WorkerReportsProgress = true;
                 worker.DoWork += (s, e) => 
                 {
                     try
                     {
-                        // .NET의 압축 기능 사용
+                        // Use .NET compression
                         bool fileExists = File.Exists(archivePath);
                         
-                        // 업데이트 모드에 따라 처리
+                        // Process according to update mode
                         if (fileExists && updateMode == UpdateMode.Fresh)
                         {
                             File.Delete(archivePath);
@@ -175,7 +184,7 @@ namespace TotalCommander.GUI
                         
                         if (!fileExists)
                         {
-                            // 새로운 ZIP 파일 생성
+                            // Create new ZIP file
                             using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
                             {
                                 int count = 0;
@@ -202,7 +211,7 @@ namespace TotalCommander.GUI
                         }
                         else
                         {
-                            // 기존 ZIP 파일 업데이트
+                            // Update existing ZIP file
                             using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Update))
                             {
                                 int count = 0;
@@ -212,14 +221,14 @@ namespace TotalCommander.GUI
                                     {
                                         string entryName = Path.GetFileName(file);
                                         
-                                        // 기존 항목 제거 (업데이트 모드일 경우)
+                                        // Remove existing entry (if in update mode)
                                         ZipArchiveEntry existingEntry = archive.GetEntry(entryName);
                                         if (existingEntry != null)
                                         {
                                             existingEntry.Delete();
                                         }
                                         
-                                        // 새 항목 추가
+                                        // Add new entry
                                         ZipArchiveEntry entry = archive.CreateEntry(entryName, 
                                             (System.IO.Compression.CompressionLevel)level);
                                         
@@ -245,9 +254,9 @@ namespace TotalCommander.GUI
                 
                 worker.ProgressChanged += (s, e) =>
                 {
-                    // UI 업데이트
+                    // Update UI
                     progressBar1.Value = e.ProgressPercentage;
-                    lblStatus.Text = $"압축 중... {e.ProgressPercentage}%";
+                    lblStatus.Text = StringResources.GetString("CompressionProgress", e.ProgressPercentage);
                 };
                 
                 worker.RunWorkerCompleted += (s, e) =>
@@ -256,16 +265,23 @@ namespace TotalCommander.GUI
                     
                     if (e.Result is Exception ex)
                     {
-                        MessageBox.Show($"압축 중 오류가 발생했습니다: {ex.Message}", 
-                                      "압축 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show(
+                            StringResources.GetString("CompressionErrorMessage", ex.Message), 
+                            StringResources.GetString("CompressionError"), 
+                            MessageBoxButtons.OK, 
+                            MessageBoxIcon.Error);
                         progressBar1.Visible = false;
                         lblStatus.Visible = false;
                     }
                     else
                     {
                         progressBar1.Value = 100;
-                        lblStatus.Text = "압축 완료!";
-                        MessageBox.Show("파일 압축이 완료되었습니다.", "완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        lblStatus.Text = StringResources.GetString("CompressionComplete");
+                        MessageBox.Show(
+                            StringResources.GetString("CompressionCompleteMessage"), 
+                            StringResources.GetString("Information"), 
+                            MessageBoxButtons.OK, 
+                            MessageBoxIcon.Information);
                         this.DialogResult = DialogResult.OK;
                         this.Close();
                     }
@@ -275,8 +291,11 @@ namespace TotalCommander.GUI
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"압축 작업을 시작하는 중 오류가 발생했습니다: {ex.Message}", 
-                              "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    StringResources.GetString("CompressionStartErrorMessage", ex.Message), 
+                    StringResources.GetString("CompressionStartError"), 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Error);
                 progressBar1.Visible = false;
                 lblStatus.Visible = false;
                 timerProgress.Stop();
@@ -293,37 +312,37 @@ namespace TotalCommander.GUI
             
             ComboBoxItem[] arrItems = new ComboBoxItem[3];
             
-            // 압축 레벨 옵션 추가
+            // Add compression level options
             ComboBoxItem item = new ComboBoxItem()
             {
-                Text = "저압축 (빠름)",
+                Text = StringResources.GetString("FastCompression"),
                 Value = (int)CompressionLevel.Fastest
             };
             arrItems[0] = item;
             
             item = new ComboBoxItem()
             {
-                Text = "보통",
+                Text = StringResources.GetString("NormalCompression"),
                 Value = (int)CompressionLevel.Optimal
             };
             arrItems[1] = item;
             
             item = new ComboBoxItem()
             {
-                Text = "최대 압축 (느림)",
+                Text = StringResources.GetString("MaximumCompression"),
                 Value = (int)CompressionLevel.SmallestSize
             };
             arrItems[2] = item;
             
             cboCompressionLevel.Items.AddRange(arrItems);
-            cboCompressionLevel.SelectedIndex = 1; // 기본값: 보통
+            cboCompressionLevel.SelectedIndex = 1; // Default: Normal
         }
 
         private void InitArchiveFormatComboBox()
         {
             cboArchiveFormat.Items.Clear();
             
-            // ZIP 형식만 지원
+            // Only ZIP format is supported
             ComboBoxItem item = new ComboBoxItem()
             {
                 Text = "ZIP",
@@ -331,7 +350,7 @@ namespace TotalCommander.GUI
             };
             cboArchiveFormat.Items.Add(item);
             cboArchiveFormat.SelectedIndex = 0;
-            cboArchiveFormat.Enabled = false; // 현재는 ZIP만 지원하므로 비활성화
+            cboArchiveFormat.Enabled = false; // Currently only ZIP is supported, so disable
         }
 
         private void InitUpdateModeComboBox()
@@ -342,35 +361,35 @@ namespace TotalCommander.GUI
             
             ComboBoxItem item = new ComboBoxItem()
             {
-                Text = "기존 파일에 추가",
+                Text = StringResources.GetString("AddToExistingArchive"),
                 Value = (int)UpdateMode.Add
             };
             cboItems[0] = item;
             
             item = new ComboBoxItem()
             {
-                Text = "기존 파일 업데이트",
+                Text = StringResources.GetString("UpdateExistingFiles"),
                 Value = (int)UpdateMode.Update
             };
             cboItems[1] = item;
             
             item = new ComboBoxItem()
             {
-                Text = "아카이브 새로 생성",
+                Text = StringResources.GetString("CreateNewArchive"),
                 Value = (int)UpdateMode.Fresh
             };
             cboItems[2] = item;
             
             cboUpdateMode.Items.AddRange(cboItems);
-            cboUpdateMode.SelectedIndex = 0; // 기본값: 추가
+            cboUpdateMode.SelectedIndex = 0; // Default: Add
         }
 
         #endregion
 
-        // 타이머 이벤트 핸들러
+        // Timer event handler
         private void timerProgress_Tick(object sender, EventArgs e)
         {
-            // 실제 진행 상황은 백그라운드 워커에서 업데이트됨
+            // Actual progress is updated from the background worker
         }
     }
 }

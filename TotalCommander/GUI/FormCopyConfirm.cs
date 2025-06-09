@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using TotalCommander;
 
 namespace TotalCommander.GUI
 {
@@ -101,14 +102,14 @@ namespace TotalCommander.GUI
         private void UpdateUI()
         {
             // 경로 정보 표시
-            lblSourcePath.Text = "원본: " + SourcePath;
-            lblDestPath.Text = "대상: " + DestinationPath;
+            lblSourcePath.Text = StringResources.GetString("SourcePath") + SourcePath;
+            lblDestPath.Text = StringResources.GetString("DestinationPath") + DestinationPath;
             
             // 파일 수 표시
-            lblFileCount.Text = $"대상 파일 수: {FileCount}개";
+            lblFileCount.Text = StringResources.GetString("FileCount", FileCount);
             
             // 용량 표시
-            lblTotalSize.Text = $"복사 용량: {FormatBytes(TotalSize)}";
+            lblTotalSize.Text = StringResources.GetString("CopySize", FormatBytes(TotalSize));
         }
         
         /// <summary>
@@ -147,7 +148,7 @@ namespace TotalCommander.GUI
             this.lblSourcePath.Name = "lblSourcePath";
             this.lblSourcePath.Size = new System.Drawing.Size(67, 15);
             this.lblSourcePath.TabIndex = 0;
-            this.lblSourcePath.Text = "원본: ";
+            this.lblSourcePath.Text = StringResources.GetString("SourcePath");
             // 
             // lblDestPath
             // 
@@ -156,7 +157,7 @@ namespace TotalCommander.GUI
             this.lblDestPath.Name = "lblDestPath";
             this.lblDestPath.Size = new System.Drawing.Size(67, 15);
             this.lblDestPath.TabIndex = 1;
-            this.lblDestPath.Text = "대상: ";
+            this.lblDestPath.Text = StringResources.GetString("DestinationPath");
             // 
             // lblSeparator
             // 
@@ -173,7 +174,7 @@ namespace TotalCommander.GUI
             this.lblFileCount.Name = "lblFileCount";
             this.lblFileCount.Size = new System.Drawing.Size(112, 15);
             this.lblFileCount.TabIndex = 3;
-            this.lblFileCount.Text = "대상 파일 수: 0개";
+            this.lblFileCount.Text = StringResources.GetString("FileCount", 0);
             // 
             // lblTotalSize
             // 
@@ -182,7 +183,7 @@ namespace TotalCommander.GUI
             this.lblTotalSize.Name = "lblTotalSize";
             this.lblTotalSize.Size = new System.Drawing.Size(91, 15);
             this.lblTotalSize.TabIndex = 4;
-            this.lblTotalSize.Text = "복사 용량: 0 KB";
+            this.lblTotalSize.Text = StringResources.GetString("CopySize", "0 KB");
             // 
             // btnCopy
             // 
@@ -191,7 +192,7 @@ namespace TotalCommander.GUI
             this.btnCopy.Name = "btnCopy";
             this.btnCopy.Size = new System.Drawing.Size(80, 30);
             this.btnCopy.TabIndex = 5;
-            this.btnCopy.Text = "복사(&Y)";
+            this.btnCopy.Text = StringResources.GetString("Copy") + "(&Y)";
             this.btnCopy.UseVisualStyleBackColor = true;
             // 
             // btnCancel
@@ -201,7 +202,7 @@ namespace TotalCommander.GUI
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(80, 30);
             this.btnCancel.TabIndex = 6;
-            this.btnCancel.Text = "취소(&C)";
+            this.btnCancel.Text = StringResources.GetString("Cancel") + "(&N)";
             this.btnCancel.UseVisualStyleBackColor = true;
             // 
             // FormCopyConfirm

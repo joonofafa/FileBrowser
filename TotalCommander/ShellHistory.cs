@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TotalCommander;
 
 namespace TotalCommander
 {
@@ -74,7 +75,7 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 뒤로 이동하여 이전 경로를 반환합니다. 이동할 수 없는 경우 빈 문자열을 반환합니다.
+        /// Moves backward and returns the current path. Returns an empty string if movement is not possible.
         /// </summary>
         public string Backward()
         {
@@ -86,7 +87,7 @@ namespace TotalCommander
         }
 
         /// <summary>
-        /// 앞으로 이동하여 다음 경로를 반환합니다. 이동할 수 없는 경우 빈 문자열을 반환합니다.
+        /// Moves forward and returns the current path. Returns an empty string if movement is not possible.
         /// </summary>
         public string Forward()
         {
@@ -108,3 +109,4 @@ namespace TotalCommander
         }
     }
 }
+
