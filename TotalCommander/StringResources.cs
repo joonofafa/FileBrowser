@@ -268,6 +268,38 @@ namespace TotalCommander
             enResources["KeySettingWithOption"] = "{0}: {1} ({2})";
             enResources["DebugKeyEvent"] = "Form_TotalCommander_KeyDown: KeyCode={0}, KeyData={1}, Handled={2}";
             
+            // 7-Zip related
+            enResources["NoCompression"] = "No Compression";
+            enResources["FastestCompression"] = "Fastest Compression";
+            enResources["UltraCompression"] = "Ultra Compression";
+            enResources["CancelOperationConfirm"] = "Do you want to cancel the current operation?";
+            enResources["Cancelled"] = "Cancelled";
+            enResources["OperationCancelled"] = "Operation was cancelled.";
+            enResources["Stop"] = "Stop";
+            
+            // Archive browsing related strings
+            enResources["ArchiveCopyRestriction"] = "You cannot copy items inside archive files.\nExtract the archive first to perform this operation.";
+            enResources["ArchiveDeleteRestriction"] = "You cannot delete items inside archive files.\nExtract the archive first to perform this operation.";
+            enResources["ArchiveCutRestriction"] = "You cannot cut items inside archive files.\nExtract the archive first to perform this operation.";
+            enResources["ArchivePasteRestriction"] = "You cannot paste inside archive files.\nExtract the archive first to perform this operation.";
+            enResources["ArchiveFolderCreateRestriction"] = "You cannot create folders inside archive files.\nExtract the archive first to perform this operation.";
+            enResources["ArchiveFileCreateRestriction"] = "You cannot create files inside archive files.\nExtract the archive first to perform this operation.";
+            enResources["OperationRestricted"] = "Operation Restricted";
+            enResources["OnlyZipSupported"] = "Currently only ZIP files are supported for viewing contents.";
+            enResources["ArchiveViewer"] = "Archive Viewer";
+            enResources["LoadingArchiveContents"] = "Loading archive contents...";
+            enResources["ArchiveItemCount"] = "Archive: {0} - {1} items";
+            enResources["ArchiveProcessingError"] = "Error occurred while processing archive file: {0}";
+            enResources["DeletingFiles"] = "Deleting Files";
+            enResources["DeletingItemsProgress"] = "Deleting items...";
+            enResources["EnterFolderName"] = "Enter folder name:";
+            enResources["EnterFileName"] = "Enter file name:";
+            enResources["NewFile"] = "New File";
+            enResources["CannotCreateFolder"] = "Cannot create folder in this location.";
+            enResources["CannotCreateFile"] = "Cannot create file in this location.";
+            enResources["CreateFolderFailed"] = "Failed to create folder.";
+            enResources["CreateFileFailed"] = "Failed to create file.";
+            
             // Add to resources dictionary
             _resources["en"] = enResources;
             
@@ -454,6 +486,70 @@ namespace TotalCommander
             koResources["ManageUserOptions"] = "사용자 옵션 관리...";
             koResources["KeyAssignmentError"] = "키 할당 오류";
             koResources["DuplicateKeyAssignment"] = "'{0}' 키는 이미 '{1}'에 할당되어 있습니다. 대신 '{2}'에 할당하시겠습니까?";
+            
+            // FormPacking
+            koResources["PackingTitle"] = "파일 압축";
+            koResources["DestinationZipFile"] = "압축 파일 위치:";
+            koResources["ArchiveDestination"] = "압축 위치:";
+            koResources["CompressionLevel"] = "압축 수준:";
+            koResources["FastCompression"] = "빠른 압축 (낮은 압축률)";
+            koResources["NormalCompression"] = "일반 압축";
+            koResources["MaximumCompression"] = "최대 압축 (느림)";
+            koResources["AddToExistingArchive"] = "기존 압축 파일에 추가";
+            koResources["UpdateExistingFiles"] = "기존 파일 업데이트";
+            koResources["CreateNewArchive"] = "새 압축 파일 생성";
+            koResources["StartCompression"] = "압축 시작";
+            koResources["ZipFileRequired"] = "압축 파일 경로를 지정하세요.";
+            koResources["NoFilesToCompress"] = "압축할 파일이 없습니다.";
+            koResources["Compressing"] = "압축 중...";
+            koResources["CompressionProgress"] = "압축 중... {0}%";
+            koResources["CompressionError"] = "압축 오류";
+            koResources["CompressionErrorMessage"] = "압축 중 오류가 발생했습니다: {0}";
+            koResources["CompressionComplete"] = "압축 완료!";
+            koResources["CompressionCompleteMessage"] = "파일 압축이 완료되었습니다.";
+            koResources["CompressionStartError"] = "압축 시작 오류";
+            koResources["CompressionStartErrorMessage"] = "압축 작업을 시작하는 중 오류가 발생했습니다: {0}";
+            
+            // 7-Zip 관련 추가 문자열
+            koResources["NoCompression"] = "압축 없음";
+            koResources["FastestCompression"] = "가장 빠른 압축";
+            koResources["UltraCompression"] = "울트라 압축";
+            koResources["CancelOperationConfirm"] = "진행 중인 작업을 취소하시겠습니까?";
+            koResources["Cancelled"] = "취소됨";
+            koResources["OperationCancelled"] = "작업이 취소되었습니다.";
+            koResources["Stop"] = "중지";
+            
+            // Archive browsing related strings
+            koResources["ArchiveCopyRestriction"] = "압축 파일 내부 항목은 복사할 수 없습니다.\n압축 파일을 압축 해제한 후 작업하세요.";
+            koResources["ArchiveDeleteRestriction"] = "압축 파일 내부 항목은 삭제할 수 없습니다.\n압축 파일을 압축 해제한 후 작업하세요.";
+            koResources["ArchiveCutRestriction"] = "압축 파일 내부 항목은 잘라낼 수 없습니다.\n압축 파일을 압축 해제한 후 작업하세요.";
+            koResources["ArchivePasteRestriction"] = "압축 파일 내부에는 붙여넣을 수 없습니다.\n압축 파일을 압축 해제한 후 작업하세요.";
+            koResources["ArchiveFolderCreateRestriction"] = "압축 파일 내부에 폴더를 생성할 수 없습니다.\n압축 파일을 압축 해제한 후 작업하세요.";
+            koResources["ArchiveFileCreateRestriction"] = "압축 파일 내부에 파일을 생성할 수 없습니다.\n압축 파일을 압축 해제한 후 작업하세요.";
+            koResources["OperationRestricted"] = "작업 제한";
+            koResources["OnlyZipSupported"] = "현재 ZIP 파일만 내용 보기를 지원합니다.";
+            koResources["ArchiveViewer"] = "압축 파일 보기";
+            koResources["LoadingArchiveContents"] = "압축 파일 내용을 불러오는 중...";
+            koResources["ArchiveItemCount"] = "압축 파일: {0} - {1}개 항목";
+            koResources["ArchiveProcessingError"] = "압축 파일을 처리하는 중 오류가 발생했습니다: {0}";
+            koResources["DeletingFiles"] = "파일 삭제 중";
+            koResources["DeletingItemsProgress"] = "항목 삭제 중...";
+            koResources["EnterFolderName"] = "폴더 이름을 입력하세요:";
+            koResources["EnterFileName"] = "파일 이름을 입력하세요:";
+            koResources["NewFile"] = "새 파일";
+            koResources["CannotCreateFolder"] = "이 위치에 폴더를 생성할 수 없습니다.";
+            koResources["CannotCreateFile"] = "이 위치에 파일을 생성할 수 없습니다.";
+            koResources["FolderExists"] = "같은 이름의 폴더가 이미 존재합니다.";
+            koResources["FileExists"] = "같은 이름의 파일이 이미 존재합니다.";
+            koResources["CreateFolderFailed"] = "폴더 생성에 실패했습니다.";
+            koResources["CreateFileFailed"] = "파일 생성에 실패했습니다.";
+            
+            // Form Common
+            koResources["Archive"] = "압축 파일:";
+            koResources["Path"] = "경로";
+            koResources["Browse"] = "찾아보기";
+            koResources["Warning"] = "경고";
+            koResources["Information"] = "정보";
             
             // Add to resources dictionary
             _resources["ko"] = koResources;

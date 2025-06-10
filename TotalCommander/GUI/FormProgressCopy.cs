@@ -24,6 +24,9 @@ namespace TotalCommander.GUI
         private long copiedBytes = 0;
         private bool cancelRequested = false;
 
+        // 작업 완료 이벤트 정의
+        public event EventHandler OperationCompleted;
+
         public FormProgressCopy(string[] sourceFiles, string destPath, bool cut)
         {
             InitializeComponent();
@@ -224,123 +227,135 @@ namespace TotalCommander.GUI
 
         private void ProcessFiles()
         {
-            PasteFileDel PasteFile;
-            PasteDirDel PasteDir;
-
-            if (isCut)
+            try
             {
-                PasteFile = FileSystem.MoveFile;
-                PasteDir = FileSystem.MoveDirectory;
-            }
-            else
-            {
-                PasteFile = FileSystem.CopyFile;
-                PasteDir = FileSystem.CopyDirectory;
-            }
-
-            foreach (string source in files)
-            {
-                if (cancelRequested)
-                    break;
-
-                string fileName = Path.GetFileName(source);
-                string target = Path.Combine(destinationPath, fileName);
-
-                try
+                if (files == null || files.Length == 0)
                 {
-                    if (File.Exists(source))
-                    {
-                        // Check if source and target are in the same directory
-                        bool isSameDirectory = Path.GetDirectoryName(source).Equals(destinationPath, StringComparison.OrdinalIgnoreCase);
-                        
-                        // If copying to the same directory, create a new filename with suffix
-                        if (isSameDirectory && !isCut)
-                        {
-                            string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-                            string fileExt = Path.GetExtension(fileName);
-                            
-                            // Generate a unique filename by adding _(1), _(2), etc.
-                            int counter = 1;
-                            while (File.Exists(target))
-                            {
-                                target = Path.Combine(destinationPath, $"{fileNameWithoutExt}_({counter}){fileExt}");
-                                counter++;
-                            }
-                        }
-
-                        FileInfo sourceInfo = new FileInfo(source);
-                        UpdateUI(isCut ? StringResources.GetString("FileMoving") : StringResources.GetString("FileCopying"), sourceInfo.Name);
-
-                        // 시스템 대화 상자 표시
-                        PasteFile(source, target, UIOption.AllDialogs, UICancelOption.DoNothing);
-                        
-                        UpdateProgress(sourceInfo.Length);
-                    }
-                    else if (Directory.Exists(source))
-                    {
-                        // Check if source and target are in the same directory
-                        bool isSameDirectory = Path.GetDirectoryName(source).Equals(destinationPath, StringComparison.OrdinalIgnoreCase);
-                        
-                        // If copying to the same directory, create a new directory name with suffix
-                        if (isSameDirectory && !isCut)
-                        {
-                            string dirName = Path.GetFileName(source);
-                            
-                            // Generate a unique directory name by adding _(1), _(2), etc.
-                            int counter = 1;
-                            while (Directory.Exists(target))
-                            {
-                                target = Path.Combine(destinationPath, $"{dirName}_({counter})");
-                                counter++;
-                            }
-                        }
-
-                        DirectoryInfo dirInfo = new DirectoryInfo(source);
-                        UpdateUI(isCut ? StringResources.GetString("FolderMoving") : StringResources.GetString("FolderCopying"), dirInfo.Name);
-
-                        // 시스템 대화 상자 표시
-                        PasteDir(source, target, UIOption.AllDialogs, UICancelOption.DoNothing);
-                        
-                        long dirSize = GetDirectorySize(source);
-                        UpdateProgress(dirSize);
-                    }
-
-                    completedFiles++;
+                    UpdateUI(StringResources.GetString("OperationError"), StringResources.GetString("NoFilesToProcess"));
+                    return;
                 }
-                catch (Exception ex)
+
+                PasteFileDel PasteFile;
+                PasteDirDel PasteDir;
+
+                if (isCut)
                 {
-                    if (this.InvokeRequired)
+                    PasteFile = FileSystem.MoveFile;
+                    PasteDir = FileSystem.MoveDirectory;
+                }
+                else
+                {
+                    PasteFile = FileSystem.CopyFile;
+                    PasteDir = FileSystem.CopyDirectory;
+                }
+
+                foreach (string source in files)
+                {
+                    if (cancelRequested)
+                        break;
+
+                    string fileName = Path.GetFileName(source);
+                    string target = Path.Combine(destinationPath, fileName);
+
+                    try
                     {
-                        this.Invoke(new Action(() =>
+                        if (File.Exists(source))
+                        {
+                            // Check if source and target are in the same directory
+                            bool isSameDirectory = Path.GetDirectoryName(source).Equals(destinationPath, StringComparison.OrdinalIgnoreCase);
+                            
+                            // If copying to the same directory, create a new filename with suffix
+                            if (isSameDirectory && !isCut)
+                            {
+                                string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+                                string fileExt = Path.GetExtension(fileName);
+                                
+                                // Generate a unique filename by adding _(1), _(2), etc.
+                                int counter = 1;
+                                while (File.Exists(target))
+                                {
+                                    target = Path.Combine(destinationPath, $"{fileNameWithoutExt}_({counter}){fileExt}");
+                                    counter++;
+                                }
+                            }
+
+                            FileInfo sourceInfo = new FileInfo(source);
+                            UpdateUI(isCut ? StringResources.GetString("FileMoving") : StringResources.GetString("FileCopying"), sourceInfo.Name);
+
+                            // 시스템 대화 상자 표시
+                            PasteFile(source, target, UIOption.AllDialogs, UICancelOption.DoNothing);
+                            
+                            UpdateProgress(sourceInfo.Length);
+                        }
+                        else if (Directory.Exists(source))
+                        {
+                            // Check if source and target are in the same directory
+                            bool isSameDirectory = Path.GetDirectoryName(source).Equals(destinationPath, StringComparison.OrdinalIgnoreCase);
+                            
+                            // If copying to the same directory, create a new directory name with suffix
+                            if (isSameDirectory && !isCut)
+                            {
+                                string dirName = Path.GetFileName(source);
+                                
+                                // Generate a unique directory name by adding _(1), _(2), etc.
+                                int counter = 1;
+                                while (Directory.Exists(target))
+                                {
+                                    target = Path.Combine(destinationPath, $"{dirName}_({counter})");
+                                    counter++;
+                                }
+                            }
+
+                            DirectoryInfo dirInfo = new DirectoryInfo(source);
+                            UpdateUI(isCut ? StringResources.GetString("FolderMoving") : StringResources.GetString("FolderCopying"), dirInfo.Name);
+
+                            // 시스템 대화 상자 표시
+                            PasteDir(source, target, UIOption.AllDialogs, UICancelOption.DoNothing);
+                            
+                            long dirSize = GetDirectorySize(source);
+                            UpdateProgress(dirSize);
+                        }
+
+                        completedFiles++;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (this.InvokeRequired)
+                        {
+                            this.Invoke(new Action(() =>
+                            {
+                                CustomDialogHelper.ShowMessageBox(this, StringResources.GetString("ErrorMessage", ex.Message),
+                                    StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }));
+                        }
+                        else
                         {
                             CustomDialogHelper.ShowMessageBox(this, StringResources.GetString("ErrorMessage", ex.Message),
                                 StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        }));
-                    }
-                    else
-                    {
-                        CustomDialogHelper.ShowMessageBox(this, StringResources.GetString("ErrorMessage", ex.Message),
-                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
                     }
                 }
-            }
 
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action(() =>
+                if (completedFiles == totalFiles)
                 {
-                    lblStatus.Text = cancelRequested ? 
-                        StringResources.GetString("OperationCancelled") : 
-                        StringResources.GetString("OperationCompleted");
-                    lblStatus.Text = StringResources.GetString("CompletedFiles", completedFiles, totalFiles);
-                }));
+                    // 작업 완료, 부모 폼에 알림
+                    UpdateUI(StringResources.GetString("OperationCompleted"), StringResources.GetString("CompletedFiles", completedFiles, totalFiles));
+                    
+                    // 작업 완료 이벤트 발생
+                    OperationCompleted?.Invoke(this, EventArgs.Empty);
+                }
+                else if (isCancelled)
+                {
+                    UpdateUI(StringResources.GetString("OperationCancelled"), "");
+                }
+                else
+                {
+                    UpdateUI(StringResources.GetString("OperationError"), "");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                lblStatus.Text = cancelRequested ? 
-                    StringResources.GetString("OperationCancelled") : 
-                    StringResources.GetString("OperationCompleted");
-                lblStatus.Text = StringResources.GetString("CompletedFiles", completedFiles, totalFiles);
+                UpdateUI(StringResources.GetString("OperationError"), StringResources.GetString("ErrorMessage", ex.Message));
             }
         }
 

@@ -68,6 +68,16 @@ Key | Action
 - [ ] Add Travis CI build tests
 - [x] Beautify [Keyboards.html](TotalCommander/Keyboards.html)
 
+### Development Guidelines
+
+This project follows specific coding conventions and internationalization practices. All developers contributing to this project should adhere to these guidelines:
+
+- **Code Comments**: All comments must be written in English
+- **String Resources**: UI strings must use the `StringResources` system for internationalization
+- **Naming Conventions**: Follow the project's naming conventions
+
+For detailed guidelines, please refer to our [Coding Guidelines](docs/CODING_GUIDELINES.md).
+
 ### Meta
 
 - Written by @lzutao

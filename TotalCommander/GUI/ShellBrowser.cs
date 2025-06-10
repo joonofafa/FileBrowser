@@ -15,6 +15,7 @@ using System.Collections.Specialized;
 using System.Threading;
 using System.Xml;
 using System.Text.RegularExpressions;
+using System.IO.Compression;
 
 namespace TotalCommander.GUI
 {
@@ -47,6 +48,21 @@ namespace TotalCommander.GUI
         public string CurrentPath = Path.GetPathRoot(Environment.SystemDirectory);
         private SortOrder Order = SortOrder.None;
         private int SortColumn = 0;
+        
+        /// <summary>
+        /// Whether currently browsing inside an archive file
+        /// </summary>
+        private bool m_IsInsideArchive = false;
+        
+        /// <summary>
+        /// Path of the currently opened archive file
+        /// </summary>
+        private string m_CurrentArchivePath = string.Empty;
+        
+        /// <summary>
+        /// Temporary work directory path
+        /// </summary>
+        private string m_TempWorkDir = string.Empty;
         #endregion
 
         #region Event hanlder
@@ -241,6 +257,10 @@ namespace TotalCommander.GUI
             txtPath.Text = CurrentPath;
             txtPath.LostFocus += TxtPath_LostFocus;
             txtPath.KeyDown += TxtPath_KeyDown;
+            
+            // Set address bar height similar to window title bar (about 30px)
+            txtPath.Height = 30;
+            txtPath.Font = new Font(txtPath.Font.FontFamily, 12, txtPath.Font.Style);
             
             // Set not accessible by Tab key
             txtPath.TabStop = false;
@@ -898,6 +918,16 @@ namespace TotalCommander.GUI
 
         public void CopySelectedItems()
         {
+            // Restrict copy operation inside archive files
+            if (m_IsInsideArchive)
+            {
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), 
+                    StringResources.GetString("ArchiveCopyRestriction"), 
+                    StringResources.GetString("OperationRestricted"), 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
             if (browser.SelectedIndices.Count > 0)
             {
                 string fileName = string.Empty;
@@ -917,6 +947,16 @@ namespace TotalCommander.GUI
 
         public async void DeleteSelectedItems(RecycleOption recycle)
         {
+            // Restrict delete operation inside archive files
+            if (m_IsInsideArchive)
+            {
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), 
+                    StringResources.GetString("ArchiveDeleteRestriction"), 
+                    StringResources.GetString("OperationRestricted"), 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
             // Get selected items
             List<FileSystemInfo> itemsToDelete = new List<FileSystemInfo>();
             foreach (int index in browser.SelectedIndices)
@@ -931,7 +971,7 @@ namespace TotalCommander.GUI
             {
                 if (itemsToDelete.Count > 0)
                 {
-                    // 삭제 확인 메시지 생성
+                    // Create delete confirmation message
                     string confirmMessage = itemsToDelete.Count == 1 
                         ? StringResources.GetString("DeleteFile", itemsToDelete[0].Name)
                         : StringResources.GetString("DeleteMultiple", itemsToDelete.Count);
@@ -961,7 +1001,7 @@ namespace TotalCommander.GUI
                         progressForm.Size = new Size(400, 120);
                         progressForm.ShowInTaskbar = false;
                         
-                        // 진행 상황 표시줄 추가
+                        // Add progress bar
                         ProgressBar progressBar = new ProgressBar();
                         progressBar.Dock = DockStyle.None;
                         progressBar.Location = new Point(20, 20);
@@ -969,7 +1009,7 @@ namespace TotalCommander.GUI
                         progressBar.Style = ProgressBarStyle.Marquee;
                         progressForm.Controls.Add(progressBar);
                         
-                        // 상태 라벨 추가
+                        // Add status label
                         Label statusLabel = new Label();
                         statusLabel.AutoSize = true;
                         statusLabel.Location = new Point(20, 50);
@@ -1055,6 +1095,16 @@ namespace TotalCommander.GUI
 
         public void CutSelectedItems()
         {
+            // Restrict cut operation inside archive files
+            if (m_IsInsideArchive)
+            {
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), 
+                    StringResources.GetString("ArchiveCutRestriction"), 
+                    StringResources.GetString("OperationRestricted"), 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
             CopySelectedItems();
             CanCut = true;
         }
@@ -1063,11 +1113,22 @@ namespace TotalCommander.GUI
         private delegate void PasteFileDel(string source, string dest, UIOption uiOption, UICancelOption cancelOption);
         private delegate void PasteDirDel(string source, string dest, UIOption uiOption, UICancelOption cancelOption);
         #endregion Delegates
+        
         /// <summary>
-        /// 선택된 항목을 클립보드에 붙여넣기
+        /// Paste selected items from clipboard
         /// </summary>
         public void PasteFromClipboard()
         {
+            // Restrict paste operation inside archive files
+            if (m_IsInsideArchive)
+            {
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), 
+                    StringResources.GetString("ArchivePasteRestriction"), 
+                    StringResources.GetString("OperationRestricted"), 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
             if (Clipboard.ContainsFileDropList())
             {
                 string[] files = Clipboard.GetFileDropList().Cast<string>().ToArray();
@@ -1200,91 +1261,160 @@ namespace TotalCommander.GUI
 
         #region Create New Folder and New File
 
-        public void CreateNewFile()
-        {
-            string name = GetDefaultDirectoryName(CurrentPath, "New Text Document");
-            string filter = @"All file (*.*) | *.*";
-            var dialog = new SaveFileDialog()
-            {
-                FileName = name,
-                DefaultExt = ".txt",
-                InitialDirectory = CurrentPath,
-                ValidateNames = true,
-                Filter = filter
-            };
-            
-            // Show dialog using FormHelper
-            Form mainForm = this.FindForm();
-            if (FormHelper.ShowCommonDialog(dialog, mainForm) == DialogResult.OK)
-            {
-                try
-                {
-                    var s = File.Create(dialog.FileName);
-                    s.Close();
-                }
-                catch (NotSupportedException)
-                {
-                    MessageBox.Show(StringResources.GetString("InvalidFileName"));
-                }
-                catch (PathTooLongException)
-                {
-                    MessageBox.Show(StringResources.GetString("FileNameTooLong"));
-                }
-                catch (IOException)
-                {
-                    MessageBox.Show(StringResources.GetString("ReadOnlyParentDirectory"));
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    MessageBox.Show(StringResources.GetString("CannotCreateFileInThisFolder"));
-                }
-                finally { RefreshListView(); }
-            }
-        }
-
-        /// <summary>
-        /// Creates new folder in current path
-        /// </summary>
         public void CreateNewFolder()
         {
-            string name = GetDefaultDirectoryName(CurrentPath);
-
-            FormNewFolder frmNewfolder = new FormNewFolder() { NewName = name };
-            frmNewfolder.Init();
-            ShowDialogCentered(frmNewfolder);
-
-            if (frmNewfolder.DialogResult == DialogResult.OK)
+            // Restrict folder creation inside archive files
+            if (m_IsInsideArchive)
             {
-                name = frmNewfolder.NewName;
-                string fullPath = Path.Combine(CurrentPath, name);
-                bool exists = Directory.Exists(fullPath);
-                try
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), 
+                    StringResources.GetString("ArchiveFolderCreateRestriction"), 
+                    StringResources.GetString("OperationRestricted"), 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
+            string targetPath = CurrentPath;
+            
+            // 현재 위치에 새 폴더를 생성할 수 있는지 확인
+            if (!Directory.Exists(targetPath))
+            {
+                MessageBox.Show(StringResources.GetString("CannotCreateFolder"),
+                    StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            
+            // 새 폴더 이름 입력 대화 상자 생성
+            using (InputDialog inputDialog = new InputDialog())
+            {
+                inputDialog.Text = StringResources.GetString("NewFolder");
+                inputDialog.PromptText = StringResources.GetString("EnterFolderName");
+                inputDialog.Value = GetDefaultDirectoryName(targetPath);
+                
+                // 대화 상자 표시
+                if (ShowDialogCentered(inputDialog) == DialogResult.OK)
                 {
-                    if (!exists)
+                    string newName = inputDialog.Value;
+                    if (string.IsNullOrWhiteSpace(newName))
                     {
-                        Directory.CreateDirectory(fullPath);
+                        MessageBox.Show(StringResources.GetString("InvalidFolderName"),
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    // 새 폴더 경로 생성
+                    string newFolderPath = Path.Combine(targetPath, newName);
+                    
+                    // 같은 이름의 폴더가 이미 존재하는지 확인
+                    if (Directory.Exists(newFolderPath))
+                    {
+                        MessageBox.Show(StringResources.GetString("FolderExists"),
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    // 같은 이름의 파일이 이미 존재하는지 확인
+                    if (File.Exists(newFolderPath))
+                    {
+                        MessageBox.Show(StringResources.GetString("FileExists"),
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    try
+                    {
+                        // 폴더 생성
+                        Directory.CreateDirectory(newFolderPath);
+                        
+                        // 목록 새로 고침
                         RefreshListView();
+                        
+                        // 새로 생성된 폴더를 선택
+                        SelectCreatedFolder(newFolderPath);
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        MessageBox.Show(StringResources.GetString("FolderAlreadyExists", name));
+                        MessageBox.Show(StringResources.GetString("CreateFolderFailed") + "\n" + ex.Message,
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
-                catch (NotSupportedException)
+            }
+        }
+        
+        public void CreateNewFile()
+        {
+            // Restrict file creation inside archive files
+            if (m_IsInsideArchive)
+            {
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), 
+                    StringResources.GetString("ArchiveFileCreateRestriction"), 
+                    StringResources.GetString("OperationRestricted"), 
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            
+            string targetPath = CurrentPath;
+            
+            // 현재 위치에 새 파일을 생성할 수 있는지 확인
+            if (!Directory.Exists(targetPath))
+            {
+                MessageBox.Show(StringResources.GetString("CannotCreateFile"),
+                    StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            
+            // 새 파일 이름 입력 대화 상자 생성
+            using (InputDialog inputDialog = new InputDialog())
+            {
+                inputDialog.Text = StringResources.GetString("NewFile");
+                inputDialog.PromptText = StringResources.GetString("EnterFileName");
+                inputDialog.Value = "New Text Document.txt";
+                
+                // 대화 상자 표시
+                if (ShowDialogCentered(inputDialog) == DialogResult.OK)
                 {
-                    MessageBox.Show(StringResources.GetString("InvalidDirectoryName"));
-                }
-                catch (PathTooLongException)
-                {
-                    MessageBox.Show(StringResources.GetString("DirectoryNameTooLong"));
-                }
-                catch (IOException)
-                {
-                    MessageBox.Show(StringResources.GetString("ReadOnlyParentDirectory"));
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    MessageBox.Show(StringResources.GetString("CannotCreateDirectoryInThisFolder"));
+                    string newName = inputDialog.Value;
+                    if (string.IsNullOrWhiteSpace(newName))
+                    {
+                        MessageBox.Show(StringResources.GetString("InvalidFileName"),
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    // 새 파일 경로 생성
+                    string newFilePath = Path.Combine(targetPath, newName);
+                    
+                    // 같은 이름의 파일이 이미 존재하는지 확인
+                    if (File.Exists(newFilePath))
+                    {
+                        MessageBox.Show(StringResources.GetString("FileExists"),
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    // 같은 이름의 폴더가 이미 존재하는지 확인
+                    if (Directory.Exists(newFilePath))
+                    {
+                        MessageBox.Show(StringResources.GetString("FolderExists"),
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    
+                    try
+                    {
+                        // 빈 파일 생성
+                        using (File.Create(newFilePath)) { }
+                        
+                        // 목록 새로 고침
+                        RefreshListView();
+                        
+                        // 새로 생성된 파일을 선택
+                        SelectCreatedFile(newFilePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(StringResources.GetString("CreateFileFailed") + "\n" + ex.Message,
+                            StringResources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
         }
@@ -1359,14 +1489,91 @@ namespace TotalCommander.GUI
 
         private void ProcessFileOrFolderPath(string path)
         {
-            if (ProcessFolder(path))
+            try
             {
-                m_History.Add(path);
-                txtPath.Text = CurrentPath; // Update address bar
+                if (string.IsNullOrEmpty(path))
+                    return;
+
+                // 먼저 디렉토리 처리 시도
+                if (Directory.Exists(path))
+                {
+                    // 탐색 시 압축 파일 내부 상태 해제
+                    if (m_IsInsideArchive)
+                    {
+                        // 임시 디렉토리 정리
+                        CleanupArchiveView();
+                    }
+                    
+                    // 폴더 경로 처리
+                    if (Navigate(path))
+                    {
+                        RefreshDisksBrowser(path, CurrentPath);
+                        SyncNavigationPaneWithCurrentPath();
+                    }
+                    return;
+                }
+
+                // 파일 처리
+                if (File.Exists(path))
+                {
+                    FileInfo fileInfo = new FileInfo(path);
+                    
+                    // 압축 파일인 경우
+                    if (IsArchiveFile(path))
+                    {
+                        // 기존 압축 파일 내부 상태 해제
+                        if (m_IsInsideArchive)
+                        {
+                            // 임시 디렉토리 정리
+                            CleanupArchiveView();
+                        }
+                        
+                        // 압축 파일 내용 처리
+                        ProcessArchiveFile(path);
+                        return;
+                    }
+                    
+                    // 실행 가능한 파일인 경우
+                    Process.Start(path);
+                    return;
+                }
+                
+                SetStatusMessage($"경로를 찾을 수 없습니다: {path}");
             }
-            else if (File.Exists(path))
+            catch (Exception ex)
             {
-                Process.Start(path);
+                SetStatusMessage($"오류: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Clean up temporary files created for archive browsing
+        /// </summary>
+        private void CleanupArchiveView()
+        {
+            try
+            {
+                m_IsInsideArchive = false;
+                m_CurrentArchivePath = string.Empty;
+                
+                // 임시 디렉토리 삭제
+                if (!string.IsNullOrEmpty(m_TempWorkDir) && Directory.Exists(m_TempWorkDir))
+                {
+                    try
+                    {
+                        Directory.Delete(m_TempWorkDir, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex, $"Failed to delete temporary directory: {m_TempWorkDir}");
+                    }
+                }
+                
+                m_TempWorkDir = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error cleaning up archive view");
             }
         }
 
@@ -1592,11 +1799,20 @@ namespace TotalCommander.GUI
             }
         }
 
+        /// <summary>
+        /// 뒤로 가기
+        /// </summary>
         public void GoBackward()
         {
             string path = m_History.Backward();
             if (!string.IsNullOrEmpty(path))
             {
+                // 압축 파일 내부 상태 해제
+                if (m_IsInsideArchive)
+                {
+                    CleanupArchiveView();
+                }
+                
                 if (ProcessFolder(path))
                 {
                     RefreshDisksBrowser(CurrentPath, disksBrowser.SelectedItem.ToString());
@@ -1610,11 +1826,20 @@ namespace TotalCommander.GUI
             }
         }
 
+        /// <summary>
+        /// 앞으로 가기
+        /// </summary>
         public void GoForward()
         {
             string path = m_History.Forward();
             if (!string.IsNullOrEmpty(path))
             {
+                // 압축 파일 내부 상태 해제
+                if (m_IsInsideArchive)
+                {
+                    CleanupArchiveView();
+                }
+                
                 if (ProcessFolder(path))
                 {
                     RefreshDisksBrowser(CurrentPath, disksBrowser.SelectedItem.ToString());
@@ -1628,13 +1853,30 @@ namespace TotalCommander.GUI
             }
         }
 
+        /// <summary>
+        /// 상위 폴더로 이동
+        /// </summary>
         public void GoParent()
         {
-            string parentPath = Directory.GetParent(CurrentPath)?.FullName;
-            if (!string.IsNullOrEmpty(parentPath))
+            // 압축 파일 내부인 경우 압축 파일 경로로 이동
+            if (m_IsInsideArchive && !string.IsNullOrEmpty(m_CurrentArchivePath))
             {
-                ProcessFileOrFolderPath(parentPath);
-                m_History.Add(parentPath);
+                string parentPath = Path.GetDirectoryName(m_CurrentArchivePath);
+                if (!string.IsNullOrEmpty(parentPath))
+                {
+                    CleanupArchiveView();
+                    ProcessFileOrFolderPath(parentPath);
+                    m_History.Add(parentPath);
+                }
+                return;
+            }
+            
+            // 일반 폴더에서 상위 폴더로 이동
+            string dirParentPath = Directory.GetParent(CurrentPath)?.FullName;
+            if (!string.IsNullOrEmpty(dirParentPath))
+            {
+                ProcessFileOrFolderPath(dirParentPath);
+                m_History.Add(dirParentPath);
                 
                 // Select first item
                 SelectFirstItem();
@@ -1851,6 +2093,14 @@ namespace TotalCommander.GUI
                             System.Windows.Forms.AnchorStyles.Left | 
                             System.Windows.Forms.AnchorStyles.Right;
             txtPath.Width = this.Width;
+            
+            // Set address bar height similar to window title bar (about 30px)
+            txtPath.Height = 30;
+            txtPath.Font = new Font(txtPath.Font.FontFamily, 12, txtPath.Font.Style);
+            
+            // 주소표시줄 높이를 윈도우 타이틀바와 비슷하게 설정 (약 30px)
+            txtPath.Height = 30;
+            txtPath.Font = new Font(txtPath.Font.FontFamily, 12, txtPath.Font.Style);
             
             // Hide disk browser and storage status
             disksBrowser.Visible = false;
@@ -2129,6 +2379,357 @@ namespace TotalCommander.GUI
                 dialog.StartPosition = FormStartPosition.CenterParent;
                 dialog.Owner = mainForm;
                 return dialog.ShowDialog();
+            }
+        }
+
+        /// <summary>
+        /// Apply the sort mode to the file browser
+        /// </summary>
+        /// <param name="sortMode">Sort mode (0: Name, 1: Size, 2: Date, 3: Extension)</param>
+        public void ApplySortMode(int sortMode)
+        {
+            // Set the sort column and order based on the sort mode
+            switch (sortMode)
+            {
+                case 0: // Name
+                    SortColumn = 0;
+                    Order = SortOrder.Ascending;
+                    break;
+                case 1: // Size
+                    SortColumn = 1;
+                    Order = SortOrder.Descending;
+                    break;
+                case 2: // Date
+                    SortColumn = 2;
+                    Order = SortOrder.Descending;
+                    break;
+                case 3: // Extension
+                    SortColumn = 3;
+                    Order = SortOrder.Ascending;
+                    break;
+                default:
+                    SortColumn = 0;
+                    Order = SortOrder.Ascending;
+                    break;
+            }
+            
+            // Apply the sort if browser is already initialized
+            if (browser != null && browser.Items.Count > 0)
+            {
+                // Refresh list view with the new sort settings
+                RefreshListView();
+                Logger.Debug($"Sort mode applied: {sortMode}");
+            }
+        }
+
+        /// <summary>
+        /// Check if the file has an archive extension
+        /// </summary>
+        private bool IsArchiveFile(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                return false;
+                
+            string extension = Path.GetExtension(filePath).ToLowerInvariant();
+            return extension == ".zip" || extension == ".rar" || extension == ".7z" || 
+                   extension == ".tar" || extension == ".gz" || extension == ".bz2";
+        }
+
+        /// <summary>
+        /// Display archive file contents in current view
+        /// </summary>
+        private bool ProcessArchiveFile(string archivePath)
+        {
+            try
+            {
+                // Show temporary status
+                SetStatusMessage(StringResources.GetString("LoadingArchiveContents"));
+                
+                // ZIP 파일만 지원 (기본 .NET 라이브러리로 처리 가능)
+                if (Path.GetExtension(archivePath).ToLowerInvariant() != ".zip")
+                {
+                    CustomDialogHelper.ShowMessageBox(this.FindForm(), 
+                        StringResources.GetString("OnlyZipSupported"), 
+                        StringResources.GetString("ArchiveViewer"), 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+                
+                // 임시 상태 표시
+                SetStatusMessage("압축 파일 내용을 불러오는 중...");
+                
+                // 압축 파일 처리
+                using (var archive = System.IO.Compression.ZipFile.OpenRead(archivePath))
+                {
+                    // 화면 업데이트 일시 중지
+                    browser.BeginUpdate();
+                    
+                    try
+                    {
+                        // 캐시 및 데이터 초기화
+                        m_ListItemCache = null;
+                        m_FirstItem = 0;
+                        m_ShellItemInfo.Clear();
+                        
+                        // 기존 항목 모두 제거
+                        browser.VirtualListSize = 0;
+                        
+                        // 임시 저장 경로 지정 (압축 파일 내용을 메모리에만 유지하고 실제로 추출하지 않음)
+                        string tempVirtualPath = "[" + Path.GetFileName(archivePath) + "]";
+                        CurrentPath = tempVirtualPath;
+                        txtPath.Text = tempVirtualPath;
+                        
+                        // 압축 파일 내용을 기반으로 가상 항목 생성
+                        List<FileSystemInfo> archiveItems = new List<FileSystemInfo>();
+                        
+                        // 임시 디렉토리 및 파일 생성을 위한 기본 경로
+                        string tempBasePath = Path.GetTempPath();
+                        string tempWorkDir = Path.Combine(tempBasePath, "ArchiveView_" + Guid.NewGuid().ToString().Substring(0, 8));
+                        
+                        try
+                        {
+                            // 압축 파일 내부 탐색 상태 설정
+                            m_IsInsideArchive = true;
+                            m_CurrentArchivePath = archivePath;
+                            m_TempWorkDir = tempWorkDir;
+                            
+                            // 임시 작업 디렉토리 생성
+                            if (!Directory.Exists(tempWorkDir))
+                                Directory.CreateDirectory(tempWorkDir);
+                            
+                            // 디렉토리 목록과 파일 목록 생성 (중복 제거)
+                            Dictionary<string, bool> directories = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+                            
+                            // 우선 디렉토리 구조를 생성
+                            foreach (var entry in archive.Entries)
+                            {
+                                try
+                                {
+                                    // 빈 디렉토리나 경로 구분자로 끝나는 경우 처리
+                                    if (entry.FullName.EndsWith("/") || entry.FullName.EndsWith("\\"))
+                                    {
+                                        string dirPath = entry.FullName.TrimEnd('/', '\\');
+                                        if (!string.IsNullOrEmpty(dirPath) && !directories.ContainsKey(dirPath))
+                                        {
+                                            // 디렉토리 생성
+                                            string fullDirPath = Path.Combine(tempWorkDir, dirPath.Replace('/', Path.DirectorySeparatorChar));
+                                            DirectoryInfo dirInfo = Directory.CreateDirectory(fullDirPath);
+                                            
+                                            // 폴더 항목으로 추가
+                                            archiveItems.Add(dirInfo);
+                                            directories[dirPath] = true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // 파일이 있는 디렉토리 처리
+                                        string dirPath = Path.GetDirectoryName(entry.FullName);
+                                        if (!string.IsNullOrEmpty(dirPath) && !directories.ContainsKey(dirPath))
+                                        {
+                                            // 디렉토리 생성
+                                            string fullDirPath = Path.Combine(tempWorkDir, dirPath.Replace('/', Path.DirectorySeparatorChar));
+                                            DirectoryInfo dirInfo = Directory.CreateDirectory(fullDirPath);
+                                            
+                                            // 폴더 항목으로 추가
+                                            archiveItems.Add(dirInfo);
+                                            directories[dirPath] = true;
+                                        }
+                                        
+                                        // 파일 경로 설정
+                                        string fullFilePath = Path.Combine(tempWorkDir, entry.FullName.Replace('/', Path.DirectorySeparatorChar));
+                                        
+                                        // 빈 파일 생성하여 아이콘 표시 용도로만 사용
+                                        if (!File.Exists(fullFilePath))
+                                        {
+                                            // 디렉토리가 없으면 생성
+                                            string fileDir = Path.GetDirectoryName(fullFilePath);
+                                            if (!Directory.Exists(fileDir))
+                                                Directory.CreateDirectory(fileDir);
+                                                
+                                            // 0바이트 파일 생성
+                                            using (File.Create(fullFilePath)) { }
+                                        }
+                                        
+                                        // 파일 항목 추가
+                                        FileInfo fileInfo = new FileInfo(fullFilePath);
+                                        archiveItems.Add(fileInfo);
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Error(ex, $"Error processing archive entry: {entry.FullName}");
+                                }
+                            }
+                            
+                            // 가상 항목 추가
+                            if (archiveItems.Count > 0)
+                                m_ShellItemInfo.AddRange(archiveItems);
+                            
+                            // 리스트 크기 설정
+                            browser.VirtualListSize = m_ShellItemInfo.Count;
+                            
+                            // 첫 번째 항목 선택
+                            if (browser.VirtualListSize > 0)
+                            {
+                                browser.SelectedIndices.Clear();
+                                browser.SelectedIndices.Add(0);
+                            }
+                            
+                            // 화면 갱신
+                            browser.Invalidate(true);
+                            browser.Update();
+                            
+                            // 첫 항목 스크롤
+                            if (browser.VirtualListSize > 0)
+                            {
+                                browser.EnsureVisible(0);
+                                browser.FocusedItem = browser.Items[0];
+                            }
+                            
+                            // 상태 메시지 업데이트
+                            SetStatusMessage($"압축 파일: {Path.GetFileName(archivePath)} - {archive.Entries.Count}개 항목");
+                            
+                            // 압축 파일 히스토리 추가 (뒤로가기 지원)
+                            m_History.Add(archivePath);
+                            
+                            // Update status message
+                            SetStatusMessage(StringResources.GetString("ArchiveItemCount", Path.GetFileName(archivePath), archive.Entries.Count));
+                            
+                            // 압축 파일 히스토리 추가 (뒤로가기 지원)
+                            m_History.Add(archivePath);
+                            
+                            return true;
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error(ex, $"Error creating temporary structures: {ex.Message}");
+                            
+                            // 압축 파일 내부 탐색 상태 해제
+                            m_IsInsideArchive = false;
+                            m_CurrentArchivePath = string.Empty;
+                            
+                            // 임시 디렉토리 정리
+                            try
+                            {
+                                if (Directory.Exists(tempWorkDir))
+                                    Directory.Delete(tempWorkDir, true);
+                                
+                                m_TempWorkDir = string.Empty;
+                            }
+                            catch { /* 무시 */ }
+                            
+                            throw;
+                        }
+                    }
+                    finally
+                    {
+                        // 화면 업데이트 재개
+                        browser.EndUpdate();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, $"Error processing archive file: {archivePath}");
+                CustomDialogHelper.ShowMessageBox(this.FindForm(), 
+                    $"압축 파일을 처리하는 중 오류가 발생했습니다: {ex.Message}", 
+                    "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Returns full paths of selected items.
+        /// </summary>
+        /// <returns>Array of full paths of selected files/folders</returns>
+        public string[] GetSelectedItems()
+        {
+            if (browser.SelectedIndices.Count == 0)
+                return new string[0];
+
+            List<string> selectedPaths = new List<string>();
+
+            foreach (int index in browser.SelectedIndices)
+            {
+                if (index >= 0 && index < m_ShellItemInfo.Count)
+                {
+                    FileSystemInfo fileInfo = m_ShellItemInfo[index];
+                    selectedPaths.Add(fileInfo.FullName);
+                }
+            }
+
+            return selectedPaths.ToArray();
+        }
+
+        /// <summary>
+        /// Refreshes the file list.
+        /// </summary>
+        public void RefreshContents()
+        {
+            RefreshListView();
+        }
+
+        /// <summary>
+        /// Select newly created folder
+        /// </summary>
+        private void SelectCreatedFolder(string folderPath)
+        {
+            try
+            {
+                string folderName = Path.GetFileName(folderPath);
+                
+                // 항목 찾기
+                for (int i = 0; i < m_ShellItemInfo.Count; i++)
+                {
+                    FileSystemInfo info = m_ShellItemInfo[i];
+                    if (info is DirectoryInfo && info.Name == folderName)
+                    {
+                        // 선택 목록 초기화
+                        browser.SelectedIndices.Clear();
+                        
+                        // 새 항목 선택
+                        browser.SelectedIndices.Add(i);
+                        browser.EnsureVisible(i);
+                        browser.Focus();
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, $"Error selecting created folder: {folderPath}");
+            }
+        }
+        
+        /// <summary>
+        /// Select newly created file
+        /// </summary>
+        private void SelectCreatedFile(string filePath)
+        {
+            try
+            {
+                string fileName = Path.GetFileName(filePath);
+                
+                // 항목 찾기
+                for (int i = 0; i < m_ShellItemInfo.Count; i++)
+                {
+                    FileSystemInfo info = m_ShellItemInfo[i];
+                    if (info is FileInfo && info.Name == fileName)
+                    {
+                        // 선택 목록 초기화
+                        browser.SelectedIndices.Clear();
+                        
+                        // 새 항목 선택
+                        browser.SelectedIndices.Add(i);
+                        browser.EnsureVisible(i);
+                        browser.Focus();
+                        break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, $"Error selecting created file: {filePath}");
             }
         }
     }

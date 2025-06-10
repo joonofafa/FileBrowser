@@ -130,7 +130,7 @@ namespace TotalCommander.GUI
                     StringResources.GetString("Warning"), 
                     MessageBoxButtons.OK, 
                     MessageBoxIcon.Warning);
-                return;
+                    return;
             }
 
             // Set compression options
@@ -208,9 +208,9 @@ namespace TotalCommander.GUI
                                     }
                                 }
                             }
-                        }
-                        else
-                        {
+                }
+                else
+                {
                             // Update existing ZIP file
                             using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Update))
                             {
@@ -319,14 +319,14 @@ namespace TotalCommander.GUI
                 Value = (int)CompressionLevel.Fastest
             };
             arrItems[0] = item;
-            
+
             item = new ComboBoxItem()
             {
                 Text = StringResources.GetString("NormalCompression"),
                 Value = (int)CompressionLevel.Optimal
             };
             arrItems[1] = item;
-            
+
             item = new ComboBoxItem()
             {
                 Text = StringResources.GetString("MaximumCompression"),
@@ -358,28 +358,28 @@ namespace TotalCommander.GUI
             cboUpdateMode.Items.Clear();
             
             ComboBoxItem[] cboItems = new ComboBoxItem[3];
-            
+
             ComboBoxItem item = new ComboBoxItem()
             {
                 Text = StringResources.GetString("AddToExistingArchive"),
                 Value = (int)UpdateMode.Add
             };
             cboItems[0] = item;
-            
+
             item = new ComboBoxItem()
             {
                 Text = StringResources.GetString("UpdateExistingFiles"),
                 Value = (int)UpdateMode.Update
             };
             cboItems[1] = item;
-            
+
             item = new ComboBoxItem()
             {
                 Text = StringResources.GetString("CreateNewArchive"),
                 Value = (int)UpdateMode.Fresh
             };
             cboItems[2] = item;
-            
+
             cboUpdateMode.Items.AddRange(cboItems);
             cboUpdateMode.SelectedIndex = 0; // Default: Add
         }

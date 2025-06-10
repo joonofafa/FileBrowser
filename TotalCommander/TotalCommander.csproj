@@ -72,11 +72,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ComboBoxItem.cs" />
+    <Compile Include="Compression\SevenZipCompression.cs" />
     <Compile Include="CustomDialogHelper.cs" />
-    <Compile Include="CustomMessageBox.cs" />
+    <Compile Include="CustomMessageBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FormHelper.cs" />
-    <Compile Include="GUI\DisksBrowser.cs" />
-    <Compile Include="GUI\FileBrowser.cs" />
+    <Compile Include="GUI\DisksBrowser.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="GUI\FileBrowser.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="GUI\FormFindFiles.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -95,6 +102,12 @@
     <Compile Include="GUI\FormPacking.Designer.cs">
       <DependentUpon>FormPacking.cs</DependentUpon>
     </Compile>
+    <Compile Include="GUI\FormSevenZip.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FormSevenZip.Designer.cs">
+      <DependentUpon>FormSevenZip.cs</DependentUpon>
+    </Compile>
     <Compile Include="GUI\FormNewFolder.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -104,9 +117,17 @@
     <Compile Include="GUI\FormCopyConfirm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="GUI\FormSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FormStatusFontSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="GUI\ListViewColumnSorter.cs" />
     <Compile Include="GUI\ListViewExtensions.cs" />
-    <Compile Include="GUI\NavigationPane.cs" />
+    <Compile Include="GUI\NavigationPane.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="GUI\ShellBrowser.cs" />
     <Compile Include="GUI\ShellBrowser.Designer.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -137,6 +158,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="GUI\FormUserExecuteOption.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\FormProgressExtract.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -170,6 +194,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\FormCopyConfirm.resx">
       <DependentUpon>FormCopyConfirm.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FormSevenZip.resx">
+      <DependentUpon>FormSevenZip.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\ShellBrowser.resx">
       <DependentUpon>ShellBrowser.cs</DependentUpon>
@@ -216,6 +243,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="totalCommander.ico" />
+    <Content Include="7za.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -19,6 +19,8 @@ using System.Xml;
 // 커스텀 대화 상자 클래스 참조
 using static TotalCommander.CustomDialogHelper;
 using static TotalCommander.CustomMessageBox;
+using System.IO.Compression;
+using TotalCommander.Compression;
 
 namespace TotalCommander
 {
@@ -29,6 +31,7 @@ namespace TotalCommander
         private Font currentAppliedFont;
         private int _tabFocusState = 0;
         private KeySettings keySettings;
+        private ContextMenuStrip ContextMenuFileOperations;
         #endregion
 
         public Form_TotalCommander()
@@ -38,11 +41,15 @@ namespace TotalCommander
             // Show build date in title bar
             UpdateTitleWithBuildDateTime();
             
-            InitializeMenus();
+            // Load saved window position and size
+            LoadWindowState();
             
             // Load function key settings
             keySettings = KeySettings.Load();
             
+            // FormClosing 이벤트 핸들러 등록
+            this.FormClosing += Form_TotalCommander_FormClosing;
+
             // Debug: Verify F5 key setting loaded (replace message box with log)
             KeyAction f5Action = keySettings.GetActionForKey(Keys.F5);
             string f5UserOption = keySettings.GetUserExecuteOptionNameForKey(Keys.F5);
@@ -114,8 +121,8 @@ namespace TotalCommander
             shellBrowser_Left.RegisterSplitterDistanceChangedEvent(SplitterDistanceChanged);
             shellBrowser_Right.RegisterSplitterDistanceChangedEvent(SplitterDistanceChanged);
 
-            // Initialize menus
-            InitializeMenus();
+            // Initialize context menus
+            InitContextMenus();
         }
 
         private void ShellBrowser_StatusChanged(object sender, StatusChangedEventArgs e)
@@ -216,6 +223,11 @@ namespace TotalCommander
                     {
                         shellBrowser_Right.FocusAddressBar();
                     }
+                    e.Handled = true;
+                    break;
+                // Ctrl+Shift+X: 압축 풀기
+                case Keys.Control | Keys.Shift | Keys.X:
+                    ExtractArchives();
                     e.Handled = true;
                     break;
                 // Tab key is no longer handled here, it's handled in ProcessTabKey method only
@@ -398,11 +410,24 @@ namespace TotalCommander
             // Add key event logging
             Logger.Debug($"ProcessCmdKey: keyData={keyData}");
             
+            // Handle Alt key to prevent menu activation
+            if (keyData == (Keys.Alt) || keyData == (Keys.RMenu) || keyData == (Keys.LMenu))
+            {
+                return true;
+            }
+            
             // Space key is handled by file browser, pass it on
             if (keyData == Keys.Space)
             {
                 Logger.Debug("ProcessCmdKey: Space key detected, event passed on");
                 return false; // Pass event to other control
+            }
+            
+            // Ctrl+Shift+X key for extracting archives
+            if (keyData == (Keys.Control | Keys.Shift | Keys.X))
+            {
+                ExtractArchives();
+                return true;
             }
             
             // F2 key event handling
@@ -500,6 +525,13 @@ namespace TotalCommander
                 }
             }
             
+            // F12 key for settings
+            if (keyData == Keys.F12)
+            {
+                ShowSettingsDialog();
+                return true;
+            }
+            
             // Tab key handling
             if (keyData == Keys.Tab)
             {
@@ -510,61 +542,61 @@ namespace TotalCommander
             // Handle other keys with default processing
             return base.ProcessCmdKey(ref msg, keyData);
         }
-        #endregion Bottom buttons
-
-        #region Menu items
-        private void largeIconToolStripMenuItem_Click(object sender, EventArgs e)
+        
+        private void ShowSettingsDialog()
         {
-            m_PreviousFocus.ChangeViewMode(View.LargeIcon);
-        }
-
-        private void smallIconToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            m_PreviousFocus.ChangeViewMode(View.SmallIcon);
-        }
-
-        private void listToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            m_PreviousFocus.ChangeViewMode(View.List);
-        }
-
-        private void detailsToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            m_PreviousFocus.ChangeViewMode(View.Details);
-        }
-
-        private void tileToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            m_PreviousFocus.ChangeViewMode(View.Tile);
-        }
-
-        private void fontToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            using (FormFontSettings fontDialog = new FormFontSettings(currentAppliedFont))
+            // Show the settings dialog
+            using (var settingsForm = new GUI.FormSettings(this))
             {
-                if (ShowDialogCentered(fontDialog) == DialogResult.OK)
+                if (ShowDialogCentered(settingsForm) == DialogResult.OK)
                 {
-                    Font selectedFont = fontDialog.SelectedFont;
-                    if (selectedFont != null)
-                    {
-                        // Apply main font
-                        shellBrowser_Left.ApplyFont(selectedFont);
-                        shellBrowser_Right.ApplyFont(selectedFont);
-                        currentAppliedFont = selectedFont;
-                        
-                        // Set status bar font
-                        bool applyToStatusBar = fontDialog.ApplyToStatusBar;
-                        if (applyToStatusBar)
-                        {
-                            shellBrowser_Left.ApplyStatusBarFont(selectedFont);
-                            shellBrowser_Right.ApplyStatusBarFont(selectedFont);
-                        }
-                        
-                        // Save font settings
-                        SaveFontSettings(selectedFont, applyToStatusBar);
-                    }
+                    // Settings were saved by the form itself
+                    Logger.Debug("Settings applied");
                 }
             }
+        }
+        
+        // Methods called from FormSettings
+        public void ShowFunctionKeysDialog()
+        {
+            ShowFunctionKeySettings();
+        }
+        
+        public void ShowUserExecuteOptionsDialog()
+        {
+            // Show user execute options dialog
+            ShowUserExecuteOptions();
+        }
+        
+        public void ShowExplorerFontDialog()
+        {
+            // Show font dialog for explorer
+            using (GUI.FormFontSettings fontSettings = new GUI.FormFontSettings(currentAppliedFont))
+            {
+                if (fontSettings.ShowDialog(this) == DialogResult.OK)
+                {
+                    SaveFontSettings(fontSettings.SelectedFont, fontSettings.ApplyToStatusBar);
+                }
+            }
+        }
+
+        public void ShowStatusFontDialog()
+        {
+            // Show font dialog for status bar
+            using (GUI.FormStatusFontSettings fontSettings = new GUI.FormStatusFontSettings(currentAppliedFont))
+            {
+                if (fontSettings.ShowDialog(this) == DialogResult.OK)
+                {
+                    SaveFontSettings(fontSettings.SelectedFont, true);
+                }
+            }
+        }
+
+        public void ApplySortMode(int sortMode)
+        {
+            // Apply sort mode to both shell browsers
+            shellBrowser_Left.ApplySortMode(sortMode);
+            shellBrowser_Right.ApplySortMode(sortMode);
         }
 
         // Method to save font settings
@@ -607,11 +639,7 @@ namespace TotalCommander
             }
         }
 
-        private void functionKeysToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ShowFunctionKeySettings();
-        }
-        #endregion Menu items
+        #endregion Bottom buttons
 
         #region Device detector constants and Structs
 
@@ -652,27 +680,8 @@ namespace TotalCommander
 
         private void InitializeMenus()
         {
-            // Add menu items to existing menu (mnuMain)
-            if (configurationToolStripMenuItem != null)
-            {
-                // Add User Execute Options menu item (if not already added)
-                bool hasUserExecuteOptions = false;
-                foreach (ToolStripItem item in configurationToolStripMenuItem.DropDownItems)
-                {
-                    if (item is ToolStripMenuItem && item.Text == "User Execute Options")
-                    {
-                        hasUserExecuteOptions = true;
-                        break;
-                    }
-                }
-
-                if (!hasUserExecuteOptions)
-                {
-                    ToolStripMenuItem userExecuteOptionsMenuItem = new ToolStripMenuItem("User Execute Options");
-                    userExecuteOptionsMenuItem.Click += (s, e) => ShowUserExecuteOptions();
-                    configurationToolStripMenuItem.DropDownItems.Add(userExecuteOptionsMenuItem);
-                }
-            }
+            // 메뉴가 제거되었으므로 이 메서드는 비워둡니다.
+            // 필요한 경우 새로운 메뉴 초기화 코드를 여기에 추가할 수 있습니다.
         }
 
         private void ShowUserExecuteOptions()
@@ -1085,6 +1094,11 @@ namespace TotalCommander
                     return;
                 }
                 
+                // 진행 상태 대화상자 생성
+                GUI.FormProgressCopy progressForm = new GUI.FormProgressCopy(selectedPaths.ToArray(), destPath, false);
+                progressForm.OperationCompleted += ProgressForm_OperationCompleted;
+                progressForm.Show(this);
+                
                 // Set up ShellFileOperation for copying
                 ShellFileOperation fileOperation = new ShellFileOperation();
                 fileOperation.SourceFiles = selectedPaths.ToArray();
@@ -1101,7 +1115,8 @@ namespace TotalCommander
                 
                 if (success)
                 {
-                    // Refresh destination panel after copy
+                    // 복사 완료 후 두 패널 모두 새로고침
+                    source.RefreshAll();
                     destination.RefreshAll();
                     
                     // Show copy completion message
@@ -1255,6 +1270,494 @@ namespace TotalCommander
         public DialogResult ShowDialogCentered(Form dialog)
         {
             return FormHelper.ShowDialogCentered(dialog, this);
+        }
+
+        private void Form_TotalCommander_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Save window state before closing
+            SaveWindowState();
+        }
+
+        private void SaveWindowState()
+        {
+            // Save maximized state separately
+            if (this.WindowState == FormWindowState.Maximized)
+            {
+                Properties.Settings.Default.WindowMaximized = true;
+            }
+            else
+            {
+                // Only save size and position when the window is in normal state
+                Properties.Settings.Default.WindowMaximized = false;
+                Properties.Settings.Default.WindowWidth = this.Width;
+                Properties.Settings.Default.WindowHeight = this.Height;
+                Properties.Settings.Default.WindowLeft = this.Left;
+                Properties.Settings.Default.WindowTop = this.Top;
+            }
+            
+            // Save settings
+            Properties.Settings.Default.Save();
+            Logger.Debug("Window state saved");
+        }
+
+        private void LoadWindowState()
+        {
+            try
+            {
+                // Check if previously saved as maximized
+                if (Properties.Settings.Default.WindowMaximized)
+                {
+                    this.WindowState = FormWindowState.Maximized;
+                    Logger.Debug("Window loaded in maximized state");
+                    return;
+                }
+                
+                // Check if saved size is valid
+                if (Properties.Settings.Default.WindowWidth > 0 && 
+                    Properties.Settings.Default.WindowHeight > 0)
+                {
+                    this.Width = Properties.Settings.Default.WindowWidth;
+                    this.Height = Properties.Settings.Default.WindowHeight;
+                    
+                    // Check if saved position is valid
+                    if (Properties.Settings.Default.WindowLeft > -10000 && 
+                        Properties.Settings.Default.WindowTop > -10000)
+                    {
+                        this.Left = Properties.Settings.Default.WindowLeft;
+                        this.Top = Properties.Settings.Default.WindowTop;
+                    }
+                    
+                    // Verify window is visible on screen and adjust if necessary
+                    EnsureVisibleOnScreen();
+                    
+                    Logger.Debug("Window loaded with saved size and position");
+                }
+                else
+                {
+                    // Default settings (normal state and centered)
+                    this.WindowState = FormWindowState.Normal;
+                    this.StartPosition = FormStartPosition.CenterScreen;
+                    Logger.Debug("Window loaded with default state");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Set default state on error
+                this.WindowState = FormWindowState.Normal;
+                this.StartPosition = FormStartPosition.CenterScreen;
+                Logger.Error("Error loading window state: " + ex.Message);
+            }
+        }
+        
+        private void EnsureVisibleOnScreen()
+        {
+            // Check if window is visible on screen and adjust position if needed
+            Rectangle screenBounds = Screen.FromControl(this).WorkingArea;
+            bool needRepositioning = false;
+            
+            // Check if form is completely outside the screen
+            if (this.Left + this.Width < screenBounds.Left + 50 || 
+                this.Left > screenBounds.Right - 50 ||
+                this.Top + this.Height < screenBounds.Top + 50 ||
+                this.Top > screenBounds.Bottom - 50)
+            {
+                needRepositioning = true;
+            }
+            
+            if (needRepositioning)
+            {
+                // Center on screen
+                this.Left = screenBounds.Left + (screenBounds.Width - this.Width) / 2;
+                this.Top = screenBounds.Top + (screenBounds.Height - this.Height) / 2;
+                Logger.Debug("Window position adjusted to ensure visibility on screen");
+            }
+        }
+
+        /// <summary>
+        /// 압축 파일 확장자 확인
+        /// </summary>
+        private bool IsArchiveFile(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                return false;
+                
+            string extension = Path.GetExtension(filePath).ToLowerInvariant();
+            return extension == ".zip" || extension == ".rar" || extension == ".7z" || 
+                   extension == ".tar" || extension == ".gz" || extension == ".bz2";
+        }
+        
+        /// <summary>
+        /// 선택된 압축 파일들의 압축을 풉니다.
+        /// </summary>
+        private void ExtractArchives()
+        {
+            try
+            {
+                // 현재 포커스된 파일 브라우저의 선택된 파일 확인
+                if (m_PreviousFocus?.FileExplorer?.SelectedIndices == null || 
+                    m_PreviousFocus.FileExplorer.SelectedIndices.Count == 0)
+                {
+                    return;
+                }
+                
+                // 선택된 모든 파일 가져오기
+                List<FileSystemInfo> selectedFiles = new List<FileSystemInfo>();
+                foreach (int index in m_PreviousFocus.FileExplorer.SelectedIndices)
+                {
+                    if (index >= 0 && index < m_PreviousFocus.m_ShellItemInfo.Count)
+                    {
+                        FileSystemInfo item = m_PreviousFocus.m_ShellItemInfo[index];
+                        if (item is FileInfo fileInfo && IsArchiveFile(fileInfo.FullName))
+                        {
+                            selectedFiles.Add(fileInfo);
+                        }
+                    }
+                }
+                
+                // 선택된 파일이 없거나, 압축 파일과 일반 파일이 혼합되어 있는 경우
+                if (selectedFiles.Count == 0 || 
+                    selectedFiles.Count != m_PreviousFocus.FileExplorer.SelectedIndices.Count)
+                {
+                    CustomDialogHelper.ShowMessageBox(this, 
+                        "선택된 압축 파일이 없거나, 압축 파일과 일반 파일이 함께 선택되어 있습니다.", 
+                        "압축 풀기", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                // 진행 상태 대화상자 생성 (압축 해제 전용 대화상자 사용)
+                GUI.FormProgressExtract progressForm = new GUI.FormProgressExtract(
+                    selectedFiles.Select(f => f.FullName).ToArray());
+                progressForm.OperationCompleted += ProgressForm_OperationCompleted;
+                progressForm.Show(this);
+                
+                // 압축 해제 작업 비동기 실행
+                Task.Run(() =>
+                {
+                    int totalFiles = selectedFiles.Count;
+                    int processedFiles = 0;
+                    
+                    try
+                    {
+                        // 압축 풀기 진행
+                        foreach (FileInfo archiveFile in selectedFiles.Cast<FileInfo>())
+                        {
+                            if (progressForm.IsCancelled)
+                                break;
+                                
+                            // 진행 상태 업데이트
+                            progressForm.SetStatus($"압축 파일 처리 중: {archiveFile.Name}");
+                            progressForm.SetCurrentFile($"파일: {archiveFile.Name}");
+                            progressForm.UpdateFileProgress(processedFiles, totalFiles);
+                            
+                            // 압축 파일 이름과 동일한 폴더 생성 (확장자 제외)
+                            string extractFolderName = Path.GetFileNameWithoutExtension(archiveFile.Name);
+                            string extractPath = Path.Combine(archiveFile.DirectoryName, extractFolderName);
+                            
+                            // 폴더가 없으면 생성
+                            if (!Directory.Exists(extractPath))
+                            {
+                                Directory.CreateDirectory(extractPath);
+                            }
+                            
+                            try
+                            {
+                                // 압축 해제 - ZIP 파일은 .NET 내장 라이브러리로 처리
+                                if (archiveFile.Extension.ToLowerInvariant() == ".zip")
+                                {
+                                    System.IO.Compression.ZipFile.ExtractToDirectory(archiveFile.FullName, extractPath);
+                                }
+                                else if (archiveFile.Extension.ToLowerInvariant() == ".7z" || 
+                                        archiveFile.Extension.ToLowerInvariant() == ".tar" ||
+                                        archiveFile.Extension.ToLowerInvariant() == ".gz" ||
+                                        archiveFile.Extension.ToLowerInvariant() == ".bz2")
+                                {
+                                    // 7za.exe를 사용하여 압축 해제
+                                    string sevenZipPath = Path.Combine(
+                                        Path.GetDirectoryName(Application.ExecutablePath),
+                                        "7za.exe");
+                                        
+                                    if (File.Exists(sevenZipPath))
+                                    {
+                                        ProcessStartInfo psi = new ProcessStartInfo
+                                        {
+                                            FileName = sevenZipPath,
+                                            Arguments = $"x \"{archiveFile.FullName}\" -o\"{extractPath}\" -y",
+                                            CreateNoWindow = true,
+                                            UseShellExecute = false,
+                                            RedirectStandardOutput = true,
+                                            RedirectStandardError = true
+                                        };
+                                        
+                                        using (Process process = new Process())
+                                        {
+                                            process.StartInfo = psi;
+                                            process.OutputDataReceived += (s, e) => 
+                                            {
+                                                if (!string.IsNullOrEmpty(e.Data) && e.Data.Contains("%"))
+                                                {
+                                                    // 진행률 추출 및 업데이트
+                                                    try
+                                                    {
+                                                        int percentIndex = e.Data.IndexOf("%");
+                                                        if (percentIndex > 0)
+                                                        {
+                                                            int i = percentIndex - 1;
+                                                            while (i >= 0 && char.IsDigit(e.Data[i])) i--;
+                                                            string percentStr = e.Data.Substring(i + 1, percentIndex - i - 1);
+                                                            if (int.TryParse(percentStr, out int percent))
+                                                            {
+                                                                // 진행률 표시는 필요 없음 (마퀴 스타일 인디케이터)
+                                                                // 대신 현재 파일 정보 표시
+                                                                string fileInfo = e.Data.Trim();
+                                                                progressForm.SetCurrentFile(fileInfo);
+                                                            }
+                                                        }
+                                                    }
+                                                    catch { /* 무시 */ }
+                                                }
+                                            };
+                                            
+                                            process.Start();
+                                            process.BeginOutputReadLine();
+                                            process.WaitForExit();
+                                            
+                                            if (process.ExitCode != 0)
+                                            {
+                                                this.Invoke(new Action(() =>
+                                                {
+                                                    CustomDialogHelper.ShowMessageBox(this, 
+                                                        $"'{archiveFile.Name}' 파일 압축 해제 중 오류가 발생했습니다.", 
+                                                        "압축 풀기 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                                }));
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // 기타 압축 파일은 외부 도구 실행 (PowerShell)
+                                        ProcessStartInfo psi = new ProcessStartInfo
+                                        {
+                                            FileName = "powershell",
+                                            Arguments = $"-Command \"Expand-Archive -Path '{archiveFile.FullName}' -DestinationPath '{extractPath}' -Force\"",
+                                            CreateNoWindow = true,
+                                            UseShellExecute = false
+                                        };
+                                        
+                                        using (Process process = Process.Start(psi))
+                                        {
+                                            process.WaitForExit();
+                                            if (process.ExitCode != 0)
+                                            {
+                                                this.Invoke(new Action(() =>
+                                                {
+                                                    CustomDialogHelper.ShowMessageBox(this, 
+                                                        $"'{archiveFile.Name}' 파일 압축 해제 중 오류가 발생했습니다.", 
+                                                        "압축 풀기 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                                }));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                this.Invoke(new Action(() =>
+                                {
+                                    progressForm.Close();
+                                    CustomDialogHelper.ShowMessageBox(this, 
+                                        $"압축 풀기 중 오류가 발생했습니다: {ex.Message}", 
+                                        "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                }));
+                            }
+                            
+                            processedFiles++;
+                            progressForm.UpdateFileProgress(processedFiles, totalFiles);
+                        }
+                        
+                        // 작업 완료 후 UI 업데이트
+                        this.Invoke(new Action(() =>
+                        {
+                            // 압축 해제 후 현재 폴더 새로고침
+                            m_PreviousFocus.RefreshAll();
+                            shellBrowser_Left.RefreshAll();
+                            shellBrowser_Right.RefreshAll();
+                            
+                            progressForm.Close();
+                            
+                            if (!progressForm.IsCancelled)
+                            {
+                                CustomDialogHelper.ShowMessageBox(this, 
+                                    $"{selectedFiles.Count}개 파일의 압축이 풀렸습니다.", 
+                                    "압축 풀기 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                        }));
+                        
+                        // 작업 완료 이벤트 호출
+                        progressForm.OnOperationCompleted();
+                    }
+                    catch (Exception ex)
+                    {
+                        this.Invoke(new Action(() =>
+                        {
+                            progressForm.Close();
+                            CustomDialogHelper.ShowMessageBox(this, 
+                                $"압축 풀기 중 오류가 발생했습니다: {ex.Message}", 
+                                "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }));
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                CustomDialogHelper.ShowMessageBox(this, 
+                    $"압축 풀기 중 오류가 발생했습니다: {ex.Message}", 
+                    "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void MenuFileOperations_Click(object sender, EventArgs e)
+        {
+            ToolStripMenuItem menuItem = sender as ToolStripMenuItem;
+            if (menuItem != null)
+            {
+                string tag = menuItem.Tag as string;
+                switch (tag)
+                {
+                    case "zip":
+                        CompressSelectedFiles();
+                        break;
+                    case "7zip":
+                        CompressSelectedFilesUsing7Zip();
+                        break;
+                    // ... existing code ...
+                }
+            }
+        }
+
+        /// <summary>
+        /// 선택된 파일을 7-Zip을 사용하여 압축
+        /// </summary>
+        private void CompressSelectedFilesUsing7Zip()
+        {
+            // 현재 활성화된 셸 브라우저에서 선택된 파일 가져오기
+            ShellBrowser activeBrowser = GetActiveBrowser();
+            if (activeBrowser == null)
+                return;
+
+            // 선택된 항목 가져오기
+            string[] selectedItems = activeBrowser.GetSelectedItems();
+            if (selectedItems == null || selectedItems.Length == 0)
+            {
+                MessageBox.Show(
+                    StringResources.GetString("NoItemsSelected"),
+                    StringResources.GetString("Information"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            try
+            {
+                // 7-Zip 압축 다이얼로그 표시
+                FormSevenZip formSevenZip = new FormSevenZip(selectedItems);
+                // 압축 완료 이벤트 등록
+                formSevenZip.CompressionCompleted += SevenZip_CompressionCompleted;
+                formSevenZip.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"7-Zip 압축 오류: {ex.Message}",
+                    "오류",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+        
+        /// <summary>
+        /// 7-Zip 압축 완료 이벤트 처리
+        /// </summary>
+        private void SevenZip_CompressionCompleted(object sender, EventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new EventHandler(SevenZip_CompressionCompleted), sender, e);
+                return;
+            }
+            
+            // 양쪽 파일 패널 모두 갱신
+            shellBrowser_Left.RefreshAll();
+            shellBrowser_Right.RefreshAll();
+        }
+
+        /// <summary>
+        /// 현재 활성화된 파일 브라우저를 반환합니다.
+        /// </summary>
+        private ShellBrowser GetActiveBrowser()
+        {
+            return m_PreviousFocus;
+        }
+
+        /// <summary>
+        /// 선택된 파일을 ZIP으로 압축합니다.
+        /// </summary>
+        private void CompressSelectedFiles()
+        {
+            // 현재 활성화된 셸 브라우저에서 선택된 파일 가져오기
+            ShellBrowser activeBrowser = GetActiveBrowser();
+            if (activeBrowser == null)
+                return;
+
+            // 선택된 항목 가져오기
+            string[] selectedItems = activeBrowser.GetSelectedItems();
+            if (selectedItems == null || selectedItems.Length == 0)
+            {
+                MessageBox.Show(
+                    StringResources.GetString("NoItemsSelected"),
+                    StringResources.GetString("Information"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            // 압축 다이얼로그 표시
+            GUI.FormPacking formPacking = new GUI.FormPacking(selectedItems);
+            formPacking.ShowDialog();
+
+            // 압축 완료 후 파일 목록 새로고침
+            activeBrowser.RefreshContents();
+        }
+
+        /// <summary>
+        /// 컨텍스트 메뉴를 초기화합니다.
+        /// </summary>
+        private void InitContextMenus()
+        {
+            // 파일 작업 컨텍스트 메뉴 생성
+            ContextMenuFileOperations = new ContextMenuStrip();
+
+            // 파일 메뉴 컨텍스트 메뉴 초기화
+            ToolStripMenuItem menuZip = new ToolStripMenuItem(StringResources.GetString("Zip"), null, MenuFileOperations_Click, "zip");
+            ToolStripMenuItem menu7Zip = new ToolStripMenuItem("7-Zip", null, MenuFileOperations_Click, "7zip");
+            
+            ContextMenuFileOperations.Items.Add(menuZip);
+            ContextMenuFileOperations.Items.Add(menu7Zip);
+        }
+
+        /// <summary>
+        /// 작업 완료 시 양쪽 패널 새로 고침
+        /// </summary>
+        private void ProgressForm_OperationCompleted(object sender, EventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new EventHandler(ProgressForm_OperationCompleted), sender, e);
+                return;
+            }
+            
+            // 양쪽 파일 패널 모두 갱신
+            shellBrowser_Left.RefreshAll();
+            shellBrowser_Right.RefreshAll();
         }
     }
     
