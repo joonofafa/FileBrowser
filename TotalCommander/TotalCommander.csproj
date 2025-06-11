@@ -154,15 +154,13 @@
     <Compile Include="GUI\FormManageUserOptions.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GUI\FormProgressCopy.cs">
+    <Compile Include="GUI\FormProgress.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="GUI\FormUserExecuteOption.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="GUI\FormProgressExtract.cs">
-      <SubType>Form</SubType>
-    </Compile>
+
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ShellInfoItem.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
@@ -207,8 +205,8 @@
     <EmbeddedResource Include="GUI\FormManageUserOptions.resx">
       <DependentUpon>FormManageUserOptions.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="GUI\FormProgressCopy.resx">
-      <DependentUpon>FormProgressCopy.cs</DependentUpon>
+    <EmbeddedResource Include="GUI\FormProgress.resx">
+      <DependentUpon>FormProgress.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="GUI\FormUserExecuteOption.resx">
       <DependentUpon>FormUserExecuteOption.cs</DependentUpon>

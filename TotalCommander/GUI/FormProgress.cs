@@ -13,36 +13,75 @@ using TotalCommander;
 
 namespace TotalCommander.GUI
 {
-    public partial class FormProgressCopy : Form
+    /// <summary>
+    /// Generic progress form for file operations (copy, move, extract, etc.)
+    /// </summary>
+    public partial class FormProgress : Form
     {
+        // Progress properties
         private string[] files;
         private string destinationPath;
         private bool isCut;
         private int totalFiles;
         private int completedFiles = 0;
         private long totalBytes = 0;
-        private long copiedBytes = 0;
-        private bool cancelRequested = false;
+        private long processedBytes = 0;
+        private bool isCancelled = false;
+        private ProgressBarStyle progressStyle = ProgressBarStyle.Blocks;
+        
+        // Operation type
+        public enum OperationType
+        {
+            Copy,
+            Move,
+            Extract,
+            Compress,
+            Delete,
+            Other
+        }
+        
+        private OperationType currentOperation;
 
         // 작업 완료 이벤트 정의
         public event EventHandler OperationCompleted;
 
-        public FormProgressCopy(string[] sourceFiles, string destPath, bool cut)
+        /// <summary>
+        /// Constructor for copy/move operations
+        /// </summary>
+        public FormProgress(string[] sourceFiles, string destPath, bool cut)
         {
             InitializeComponent();
             files = sourceFiles;
             destinationPath = destPath;
             isCut = cut;
             totalFiles = files.Length;
+            currentOperation = cut ? OperationType.Move : OperationType.Copy;
 
-            // Calculate total bytes to copy
+            // Calculate total bytes for copy/move
             CalculateTotalBytes();
             
-            // 커스텀 진행 대화 상자를 표시하지 않음
-            this.Visible = false;
+            // Register Load event handler
+            this.Load += FormProgress_Load;
+        }
+        
+        /// <summary>
+        /// Constructor for extract operations
+        /// </summary>
+        public FormProgress(string[] archiveFiles, OperationType operationType)
+        {
+            InitializeComponent();
+            files = archiveFiles;
+            totalFiles = files.Length;
+            currentOperation = operationType;
+            
+            // Set marquee style for extract operations
+            if (operationType == OperationType.Extract)
+            {
+                progressStyle = ProgressBarStyle.Marquee;
+            }
             
             // Register Load event handler
-            this.Load += FormProgressCopy_Load;
+            this.Load += FormProgress_Load;
         }
 
         private void InitializeComponent()
@@ -51,17 +90,18 @@ namespace TotalCommander.GUI
             this.progressBar = new System.Windows.Forms.ProgressBar();
             this.lblStatus = new System.Windows.Forms.Label();
             this.btnCancel = new System.Windows.Forms.Button();
+            this.lblCurrentFile = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // lblTitle
             // 
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new System.Drawing.Font("맑은 고딕", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.lblTitle.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblTitle.Location = new System.Drawing.Point(12, 9);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(74, 21);
+            this.lblTitle.Size = new System.Drawing.Size(120, 20);
             this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = StringResources.GetString("FileCopyTitle");
+            this.lblTitle.Text = "File Operation";
             // 
             // progressBar
             // 
@@ -81,34 +121,46 @@ namespace TotalCommander.GUI
             this.lblStatus.Name = "lblStatus";
             this.lblStatus.Size = new System.Drawing.Size(372, 23);
             this.lblStatus.TabIndex = 2;
-            this.lblStatus.Text = StringResources.GetString("Preparing");
+            this.lblStatus.Text = "Preparing...";
+            //
+            // lblCurrentFile
+            //
+            this.lblCurrentFile.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblCurrentFile.AutoEllipsis = true;
+            this.lblCurrentFile.Location = new System.Drawing.Point(16, 106);
+            this.lblCurrentFile.Name = "lblCurrentFile";
+            this.lblCurrentFile.Size = new System.Drawing.Size(372, 23);
+            this.lblCurrentFile.TabIndex = 3;
+            this.lblCurrentFile.Text = "";
             // 
             // btnCancel
             // 
             this.btnCancel.Anchor = System.Windows.Forms.AnchorStyles.Bottom;
-            this.btnCancel.Location = new System.Drawing.Point(164, 110);
+            this.btnCancel.Location = new System.Drawing.Point(164, 140);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
-            this.btnCancel.TabIndex = 3;
-            this.btnCancel.Text = StringResources.GetString("Cancel");
+            this.btnCancel.TabIndex = 4;
+            this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
             this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
             // 
-            // FormProgressCopy
+            // FormProgress
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 14F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(400, 145);
+            this.ClientSize = new System.Drawing.Size(400, 175);
             this.Controls.Add(this.btnCancel);
+            this.Controls.Add(this.lblCurrentFile);
             this.Controls.Add(this.lblStatus);
             this.Controls.Add(this.progressBar);
             this.Controls.Add(this.lblTitle);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
-            this.Name = "FormProgressCopy";
+            this.Name = "FormProgress";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = StringResources.GetString("FileCopyTitle");
+            this.Text = "Operation Progress";
             this.ShowInTaskbar = false;
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -117,9 +169,8 @@ namespace TotalCommander.GUI
         private System.Windows.Forms.Label lblTitle;
         private System.Windows.Forms.ProgressBar progressBar;
         private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.Label lblCurrentFile;
         private System.Windows.Forms.Button btnCancel;
-
-        private bool isCancelled = false;
 
         /// <summary>
         /// Whether the operation was cancelled
@@ -134,13 +185,16 @@ namespace TotalCommander.GUI
         /// </summary>
         public void SetProgress(int percent)
         {
+            if (progressStyle == ProgressBarStyle.Marquee)
+                return; // Marquee style doesn't show percentage
+                
             if (InvokeRequired)
             {
                 Invoke(new Action<int>(SetProgress), percent);
                 return;
             }
 
-            progressBar.Value = percent;
+            progressBar.Value = Math.Min(percent, 100);
         }
 
         /// <summary>
@@ -156,12 +210,88 @@ namespace TotalCommander.GUI
 
             lblStatus.Text = message;
         }
+        
+        /// <summary>
+        /// Set current file name
+        /// </summary>
+        public void SetCurrentFile(string fileName)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action<string>(SetCurrentFile), fileName);
+                return;
+            }
+
+            string prefix = StringResources.GetString("File") + ": ";
+            lblCurrentFile.Text = prefix + fileName;
+        }
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
             isCancelled = true;
             btnCancel.Enabled = false;
             lblStatus.Text = StringResources.GetString("Cancelling");
+        }
+
+        private void FormProgress_Load(object sender, EventArgs e)
+        {
+            // Initialize form based on operation type
+            switch (currentOperation)
+            {
+                case OperationType.Copy:
+                    this.Text = StringResources.GetString("FileCopyTitle");
+                    lblTitle.Text = StringResources.GetString("FileCopying");
+                    break;
+                case OperationType.Move:
+                    this.Text = StringResources.GetString("FileMoveTitle");
+                    lblTitle.Text = StringResources.GetString("FileMoving");
+                    break;
+                case OperationType.Extract:
+                    this.Text = StringResources.GetString("FileExtractTitle");
+                    lblTitle.Text = StringResources.GetString("FileExtracting");
+                    progressBar.Style = ProgressBarStyle.Marquee;
+                    progressBar.MarqueeAnimationSpeed = 30;
+                    break;
+                case OperationType.Compress:
+                    this.Text = StringResources.GetString("FileCompressTitle");
+                    lblTitle.Text = StringResources.GetString("FileCompressing");
+                    break;
+                case OperationType.Delete:
+                    this.Text = StringResources.GetString("FileDeletingTitle");
+                    lblTitle.Text = StringResources.GetString("FileDeleting");
+                    break;
+                default:
+                    this.Text = StringResources.GetString("FileOperationTitle");
+                    lblTitle.Text = StringResources.GetString("FileProcessing");
+                    break;
+            }
+
+            // Set button text
+            btnCancel.Text = StringResources.GetString("Cancel");
+            
+            // Set initial status message
+            SetStatus(StringResources.GetString("Preparing"));
+            
+            // Configure progress bar
+            progressBar.Maximum = 100;
+            progressBar.Value = 0;
+            
+            // Show form
+            this.Visible = true;
+            this.BringToFront();
+        }
+        
+        /// <summary>
+        /// 대화 상자를 표시하지 않고 백그라운드에서 파일 처리를 수행합니다.
+        /// </summary>
+        public void ProcessFilesInBackground()
+        {
+            // Copy/Move 작업만 ProcessFiles 메서드를 사용하므로 타입 체크
+            if (currentOperation == OperationType.Copy || currentOperation == OperationType.Move)
+            {
+                // 백그라운드에서 파일 처리 실행
+                Task.Run(() => ProcessCopyMoveFiles());
+            }
         }
 
         private void CalculateTotalBytes()
@@ -201,31 +331,7 @@ namespace TotalCommander.GUI
             return size;
         }
 
-        /// <summary>
-        /// 대화 상자를 표시하지 않고 백그라운드에서 파일 처리를 수행합니다.
-        /// </summary>
-        public void ProcessFilesInBackground()
-        {
-            // 폼 초기화
-            lblStatus.Text = isCut ? StringResources.GetString("FileMoving") : StringResources.GetString("FileCopying");
-            progressBar.Maximum = 100;
-            progressBar.Value = 0;
-            
-            // 백그라운드에서 파일 처리 실행
-            Task.Run(() => ProcessFiles());
-        }
-
-        private async void FormProgressCopy_Load(object sender, EventArgs e)
-        {
-            lblStatus.Text = isCut ? StringResources.GetString("FileMoving") : StringResources.GetString("FileCopying");
-            progressBar.Maximum = 100;
-            progressBar.Value = 0;
-
-            await Task.Run(() => ProcessFiles());
-            this.Close();
-        }
-
-        private void ProcessFiles()
+        private void ProcessCopyMoveFiles()
         {
             try
             {
@@ -251,7 +357,7 @@ namespace TotalCommander.GUI
 
                 foreach (string source in files)
                 {
-                    if (cancelRequested)
+                    if (isCancelled)
                         break;
 
                     string fileName = Path.GetFileName(source);
@@ -342,7 +448,7 @@ namespace TotalCommander.GUI
                     UpdateUI(StringResources.GetString("OperationCompleted"), StringResources.GetString("CompletedFiles", completedFiles, totalFiles));
                     
                     // 작업 완료 이벤트 발생
-                    OperationCompleted?.Invoke(this, EventArgs.Empty);
+                    NotifyOperationCompleted();
                 }
                 else if (isCancelled)
                 {
@@ -359,27 +465,27 @@ namespace TotalCommander.GUI
             }
         }
 
-        private void UpdateProgress(long processedBytes)
+        private void UpdateProgress(long processedAmount)
         {
-            copiedBytes += processedBytes;
-            int progressPercentage = totalBytes > 0 ? (int)((copiedBytes * 100) / totalBytes) : 100;
+            processedBytes += processedAmount;
+            int progressPercentage = totalBytes > 0 ? (int)((processedBytes * 100) / totalBytes) : 100;
             
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action(() =>
                 {
-                    progressBar.Value = Math.Min(progressPercentage, 100);
-                    lblStatus.Text = StringResources.GetString("CompletedFilesPercent", 
+                    SetProgress(progressPercentage);
+                    SetStatus(StringResources.GetString("CompletedFilesPercent", 
                         completedFiles + 1, totalFiles, 
-                        $"{ShellBrowser.FormatBytes(copiedBytes)}/{ShellBrowser.FormatBytes(totalBytes)}");
+                        $"{ShellBrowser.FormatBytes(processedBytes)}/{ShellBrowser.FormatBytes(totalBytes)}"));
                 }));
             }
             else
             {
-                progressBar.Value = Math.Min(progressPercentage, 100);
-                lblStatus.Text = StringResources.GetString("CompletedFilesPercent", 
+                SetProgress(progressPercentage);
+                SetStatus(StringResources.GetString("CompletedFilesPercent", 
                     completedFiles + 1, totalFiles, 
-                    $"{ShellBrowser.FormatBytes(copiedBytes)}/{ShellBrowser.FormatBytes(totalBytes)}");
+                    $"{ShellBrowser.FormatBytes(processedBytes)}/{ShellBrowser.FormatBytes(totalBytes)}"));
             }
         }
 
@@ -389,15 +495,46 @@ namespace TotalCommander.GUI
             {
                 this.Invoke(new Action(() =>
                 {
-                    lblTitle.Text = status;
-                    lblStatus.Text = detail;
+                    SetStatus(detail);
                 }));
             }
             else
             {
-                lblTitle.Text = status;
-                lblStatus.Text = detail;
+                SetStatus(detail);
             }
+        }
+        
+        /// <summary>
+        /// 파일 진행률 업데이트 (압축 해제용)
+        /// </summary>
+        public void UpdateFileProgress(int current, int total)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action<int, int>(UpdateFileProgress), current, total);
+                return;
+            }
+
+            completedFiles = current;
+            totalFiles = total;
+            
+            // Marquee 스타일에서는 진행률 대신 파일 개수 표시
+            SetStatus(StringResources.GetString("ExtractingProgress", current, total));
+        }
+        
+        /// <summary>
+        /// 작업 완료 알림
+        /// </summary>
+        public void NotifyOperationCompleted()
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(NotifyOperationCompleted));
+                return;
+            }
+
+            // 작업 완료 이벤트 발생
+            OperationCompleted?.Invoke(this, EventArgs.Empty);
         }
 
         private delegate void PasteFileDel(string source, string dest, UIOption uiOption, UICancelOption cancelOption);

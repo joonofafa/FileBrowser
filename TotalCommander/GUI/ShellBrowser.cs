@@ -1136,7 +1136,7 @@ namespace TotalCommander.GUI
                 {
                     CanCut = false;
                     string destPath = CurrentPath;
-                    var copyProcessor = new FormProgressCopy(files, destPath, CanCut);
+                    var copyProcessor = new FormProgress(files, destPath, CanCut);
                     // 대화 상자를 표시하지 않고 백그라운드에서 작업 실행
                     copyProcessor.ProcessFilesInBackground();
                     RefreshListView();

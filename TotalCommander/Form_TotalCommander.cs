@@ -1095,7 +1095,7 @@ namespace TotalCommander
                 }
                 
                 // 진행 상태 대화상자 생성
-                GUI.FormProgressCopy progressForm = new GUI.FormProgressCopy(selectedPaths.ToArray(), destPath, false);
+                GUI.FormProgress progressForm = new GUI.FormProgress(selectedPaths.ToArray(), destPath, false);
                 progressForm.OperationCompleted += ProgressForm_OperationCompleted;
                 progressForm.Show(this);
                 
@@ -1424,9 +1424,8 @@ namespace TotalCommander
                     return;
                 }
 
-                // 진행 상태 대화상자 생성 (압축 해제 전용 대화상자 사용)
-                GUI.FormProgressExtract progressForm = new GUI.FormProgressExtract(
-                    selectedFiles.Select(f => f.FullName).ToArray());
+                // 진행 상태 대화상자 생성
+                GUI.FormProgress progressForm = new GUI.FormProgress(selectedFiles.Select(f => f.FullName).ToArray(), GUI.FormProgress.OperationType.Extract);
                 progressForm.OperationCompleted += ProgressForm_OperationCompleted;
                 progressForm.Show(this);
                 
@@ -1593,7 +1592,7 @@ namespace TotalCommander
                         }));
                         
                         // 작업 완료 이벤트 호출
-                        progressForm.OnOperationCompleted();
+                        progressForm.NotifyOperationCompleted();
                     }
                     catch (Exception ex)
                     {

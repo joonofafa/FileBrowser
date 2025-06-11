@@ -185,10 +185,19 @@ namespace TotalCommander
             
             // FormProgressCopy
             enResources["FileCopyTitle"] = "File Copy";
+            enResources["FileMoveTitle"] = "File Move";
+            enResources["FileExtractTitle"] = "File Extract";
+            enResources["FileCompressTitle"] = "File Compression";
+            enResources["FileDeletingTitle"] = "File Delete";
+            enResources["FileOperationTitle"] = "File Operation";
             enResources["Preparing"] = "Preparing...";
             enResources["Cancelling"] = "Cancelling...";
             enResources["FileMoving"] = "Moving files...";
             enResources["FileCopying"] = "Copying files...";
+            enResources["FileProcessing"] = "Processing files...";
+            enResources["FileExtracting"] = "Extracting files...";
+            enResources["FileCompressing"] = "Compressing files...";
+            enResources["FileDeleting"] = "Deleting files...";
             enResources["CopyingMovingFile"] = "{0} file: {1}";
             enResources["OperationError"] = "Operation Error";
             enResources["ErrorMessage"] = "Error: {0}";
@@ -196,6 +205,11 @@ namespace TotalCommander
             enResources["OperationCompleted"] = "Operation completed.";
             enResources["CompletedFiles"] = "Completed: {0}/{1} files";
             enResources["CompletedFilesPercent"] = "Completed: {0}/{1} files, {2}%";
+            enResources["File"] = "File";
+            enResources["ExtractingProgress"] = "Extracting: {0}/{1} files completed";
+            enResources["NoFilesToProcess"] = "No files to process";
+            enResources["FolderMoving"] = "Moving folder: {0}";
+            enResources["FolderCopying"] = "Copying folder: {0}";
             
             // FormPacking
             enResources["PackingTitle"] = "File Compression";
