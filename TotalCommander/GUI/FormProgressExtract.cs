@@ -16,7 +16,7 @@ namespace TotalCommander.GUI
         private string[] files;
         private int totalFiles;
         private int completedFiles = 0;
-        private bool cancelRequested = false;
+        private bool isCancelled = false;
 
         // 작업 완료 이벤트 정의
         public event EventHandler OperationCompleted;
@@ -120,8 +120,6 @@ namespace TotalCommander.GUI
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.Label lblCurrentFile;
         private System.Windows.Forms.Button btnCancel;
-
-        private bool isCancelled = false;
 
         /// <summary>
         /// Whether the operation was cancelled

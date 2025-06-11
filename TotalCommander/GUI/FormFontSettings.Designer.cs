@@ -48,15 +48,15 @@ namespace TotalCommander.GUI
             this.labelFontFamily.AutoSize = true;
             this.labelFontFamily.Location = new System.Drawing.Point(12, 15);
             this.labelFontFamily.Name = "labelFontFamily";
-            this.labelFontFamily.Size = new System.Drawing.Size(54, 12);
+            this.labelFontFamily.Size = new System.Drawing.Size(71, 12);
             this.labelFontFamily.TabIndex = 0;
-            this.labelFontFamily.Text = StringResources.GetString("FontFamily");
+            this.labelFontFamily.Text = "Font Family";
             // 
             // comboBoxFontFamily
             // 
             this.comboBoxFontFamily.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.comboBoxFontFamily.FormattingEnabled = true;
-            this.comboBoxFontFamily.Location = new System.Drawing.Point(72, 12);
+            this.comboBoxFontFamily.Location = new System.Drawing.Point(103, 12);
             this.comboBoxFontFamily.Name = "comboBoxFontFamily";
             this.comboBoxFontFamily.Size = new System.Drawing.Size(200, 20);
             this.comboBoxFontFamily.TabIndex = 1;
@@ -67,14 +67,14 @@ namespace TotalCommander.GUI
             this.labelFontSize.AutoSize = true;
             this.labelFontSize.Location = new System.Drawing.Point(12, 41);
             this.labelFontSize.Name = "labelFontSize";
-            this.labelFontSize.Size = new System.Drawing.Size(54, 12);
+            this.labelFontSize.Size = new System.Drawing.Size(58, 12);
             this.labelFontSize.TabIndex = 2;
-            this.labelFontSize.Text = StringResources.GetString("FontSize");
+            this.labelFontSize.Text = "Font Size";
             // 
             // comboBoxFontSize
             // 
-            this.comboBoxFontSize.FormattingEnabled = true; // ?용?? 직접 ?력 가?하?록 DropDownList?서 변?
-            this.comboBoxFontSize.Location = new System.Drawing.Point(72, 38);
+            this.comboBoxFontSize.FormattingEnabled = true;
+            this.comboBoxFontSize.Location = new System.Drawing.Point(103, 38);
             this.comboBoxFontSize.Name = "comboBoxFontSize";
             this.comboBoxFontSize.Size = new System.Drawing.Size(75, 20);
             this.comboBoxFontSize.TabIndex = 3;
@@ -84,22 +84,22 @@ namespace TotalCommander.GUI
             // checkBoxBold
             // 
             this.checkBoxBold.AutoSize = true;
-            this.checkBoxBold.Location = new System.Drawing.Point(160, 40);
+            this.checkBoxBold.Location = new System.Drawing.Point(191, 40);
             this.checkBoxBold.Name = "checkBoxBold";
-            this.checkBoxBold.Size = new System.Drawing.Size(62, 16);
+            this.checkBoxBold.Size = new System.Drawing.Size(49, 16);
             this.checkBoxBold.TabIndex = 4;
-            this.checkBoxBold.Text = StringResources.GetString("Bold");
+            this.checkBoxBold.Text = "Bold";
             this.checkBoxBold.UseVisualStyleBackColor = true;
             this.checkBoxBold.CheckedChanged += new System.EventHandler(this.checkBoxBold_CheckedChanged);
             // 
             // checkBoxItalic
             // 
             this.checkBoxItalic.AutoSize = true;
-            this.checkBoxItalic.Location = new System.Drawing.Point(228, 40);
+            this.checkBoxItalic.Location = new System.Drawing.Point(259, 40);
             this.checkBoxItalic.Name = "checkBoxItalic";
-            this.checkBoxItalic.Size = new System.Drawing.Size(86, 16);
+            this.checkBoxItalic.Size = new System.Drawing.Size(50, 16);
             this.checkBoxItalic.TabIndex = 5;
-            this.checkBoxItalic.Text = StringResources.GetString("Italic");
+            this.checkBoxItalic.Text = "Italic";
             this.checkBoxItalic.UseVisualStyleBackColor = true;
             this.checkBoxItalic.CheckedChanged += new System.EventHandler(this.checkBoxItalic_CheckedChanged);
             // 
@@ -111,7 +111,7 @@ namespace TotalCommander.GUI
             this.groupBoxPreview.Size = new System.Drawing.Size(300, 100);
             this.groupBoxPreview.TabIndex = 6;
             this.groupBoxPreview.TabStop = false;
-            this.groupBoxPreview.Text = StringResources.GetString("Preview");
+            this.groupBoxPreview.Text = "Preview";
             // 
             // textBoxPreview
             // 
@@ -120,27 +120,27 @@ namespace TotalCommander.GUI
             this.textBoxPreview.Name = "textBoxPreview";
             this.textBoxPreview.Size = new System.Drawing.Size(294, 80);
             this.textBoxPreview.TabIndex = 0;
-            this.textBoxPreview.Text = StringResources.GetString("SampleText");
+            this.textBoxPreview.Text = "AaBbYyZz 123";
             this.textBoxPreview.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // buttonOK
             // 
-            this.buttonOK.Location = new System.Drawing.Point(156, 180);
+            this.buttonOK.Location = new System.Drawing.Point(146, 177);
             this.buttonOK.Name = "buttonOK";
-            this.buttonOK.Size = new System.Drawing.Size(75, 23);
+            this.buttonOK.Size = new System.Drawing.Size(80, 25);
             this.buttonOK.TabIndex = 8;
-            this.buttonOK.Text = StringResources.GetString("OK");
+            this.buttonOK.Text = "Con&firm";
             this.buttonOK.UseVisualStyleBackColor = true;
             this.buttonOK.Click += new System.EventHandler(this.buttonOK_Click);
             // 
             // buttonCancel
             // 
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(237, 180);
+            this.buttonCancel.Location = new System.Drawing.Point(232, 177);
             this.buttonCancel.Name = "buttonCancel";
-            this.buttonCancel.Size = new System.Drawing.Size(75, 23);
+            this.buttonCancel.Size = new System.Drawing.Size(80, 25);
             this.buttonCancel.TabIndex = 9;
-            this.buttonCancel.Text = StringResources.GetString("Cancel");
+            this.buttonCancel.Text = "&Cancel";
             this.buttonCancel.UseVisualStyleBackColor = true;
             this.buttonCancel.Click += new System.EventHandler(this.buttonCancel_Click);
             // 
@@ -150,7 +150,7 @@ namespace TotalCommander.GUI
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.buttonCancel;
-            this.ClientSize = new System.Drawing.Size(324, 215);
+            this.ClientSize = new System.Drawing.Size(322, 207);
             this.Controls.Add(this.buttonCancel);
             this.Controls.Add(this.buttonOK);
             this.Controls.Add(this.groupBoxPreview);
@@ -167,11 +167,12 @@ namespace TotalCommander.GUI
             this.ShowIcon = false;
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = StringResources.GetString("FontSettingsTitle");
+            this.Text = "Font Settings";
             this.Load += new System.EventHandler(this.FormFontSettings_Load);
             this.groupBoxPreview.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
+
         }
 
         #endregion

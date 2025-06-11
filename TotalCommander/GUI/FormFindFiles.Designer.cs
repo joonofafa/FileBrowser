@@ -72,7 +72,7 @@ namespace TotalCommander.GUI
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(0, 12);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(66, 15);
+            this.label1.Size = new System.Drawing.Size(71, 12);
             this.label1.TabIndex = 3;
             this.label1.Text = "Search for :";
             // 
@@ -81,7 +81,7 @@ namespace TotalCommander.GUI
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(0, 46);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(61, 15);
+            this.label2.Size = new System.Drawing.Size(67, 12);
             this.label2.TabIndex = 4;
             this.label2.Text = "Search in :";
             // 
@@ -101,9 +101,10 @@ namespace TotalCommander.GUI
             // lvwViewer
             // 
             this.lvwViewer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lvwViewer.Location = new System.Drawing.Point(3, 19);
+            this.lvwViewer.HideSelection = false;
+            this.lvwViewer.Location = new System.Drawing.Point(3, 17);
             this.lvwViewer.Name = "lvwViewer";
-            this.lvwViewer.Size = new System.Drawing.Size(661, 163);
+            this.lvwViewer.Size = new System.Drawing.Size(661, 165);
             this.lvwViewer.TabIndex = 0;
             this.lvwViewer.TabStop = false;
             this.lvwViewer.UseCompatibleStateImageBehavior = false;
@@ -114,7 +115,7 @@ namespace TotalCommander.GUI
             | System.Windows.Forms.AnchorStyles.Right)));
             this.txtPattern.Location = new System.Drawing.Point(93, 12);
             this.txtPattern.Name = "txtPattern";
-            this.txtPattern.Size = new System.Drawing.Size(373, 23);
+            this.txtPattern.Size = new System.Drawing.Size(373, 21);
             this.txtPattern.TabIndex = 0;
             // 
             // txtPath
@@ -125,7 +126,7 @@ namespace TotalCommander.GUI
             this.txtPath.Location = new System.Drawing.Point(93, 46);
             this.txtPath.Name = "txtPath";
             this.txtPath.ReadOnly = true;
-            this.txtPath.Size = new System.Drawing.Size(373, 23);
+            this.txtPath.Size = new System.Drawing.Size(373, 21);
             this.txtPath.TabIndex = 1;
             // 
             // btnBrowse
@@ -146,7 +147,7 @@ namespace TotalCommander.GUI
             this.chkFindSubDirs.AutoSize = true;
             this.chkFindSubDirs.Location = new System.Drawing.Point(222, 81);
             this.chkFindSubDirs.Name = "chkFindSubDirs";
-            this.chkFindSubDirs.Size = new System.Drawing.Size(166, 19);
+            this.chkFindSubDirs.Size = new System.Drawing.Size(179, 16);
             this.chkFindSubDirs.TabIndex = 2;
             this.chkFindSubDirs.Text = "Search in all subdirectories";
             this.chkFindSubDirs.UseVisualStyleBackColor = true;
@@ -156,7 +157,7 @@ namespace TotalCommander.GUI
             this.lblStatus.AutoSize = true;
             this.lblStatus.Location = new System.Drawing.Point(0, 300);
             this.lblStatus.Name = "lblStatus";
-            this.lblStatus.Size = new System.Drawing.Size(73, 15);
+            this.lblStatus.Size = new System.Drawing.Size(78, 12);
             this.lblStatus.TabIndex = 10;
             this.lblStatus.Text = "Result status";
             // 
@@ -175,7 +176,7 @@ namespace TotalCommander.GUI
             this.Controls.Add(this.label1);
             this.Controls.Add(this.btnCancel);
             this.Controls.Add(this.btnSearch);
-            this.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Font = new System.Drawing.Font("±¼¸²", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "FormFindFiles";
             this.ShowInTaskbar = false;

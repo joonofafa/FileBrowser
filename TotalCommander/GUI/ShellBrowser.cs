@@ -279,7 +279,7 @@ namespace TotalCommander.GUI
         void TxtPath_LostFocus(object sender, EventArgs e)
         {
             // Update to current path when focus is lost
-            txtPath.Text = CurrentPath;
+                txtPath.Text = CurrentPath;
         }
 
         void TxtPath_KeyDown(object sender, KeyEventArgs e)
@@ -1035,14 +1035,14 @@ namespace TotalCommander.GUI
                                 {
                                     try
                                     {
-                                        if (File.Exists(fileName))
+                            if (File.Exists(fileName))
                                         {
                                             if (recycle == RecycleOption.SendToRecycleBin)
                                                 FileSystem.DeleteFile(fileName, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.DoNothing);
                                             else
                                                 File.Delete(fileName);
                                         }
-                                        else if (Directory.Exists(fileName))
+                            else if (Directory.Exists(fileName))
                                         {
                                             if (recycle == RecycleOption.SendToRecycleBin)
                                                 FileSystem.DeleteDirectory(fileName, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin, UICancelOption.DoNothing);
@@ -1275,7 +1275,7 @@ namespace TotalCommander.GUI
             
             string targetPath = CurrentPath;
             
-            // 현재 위치에 새 폴더를 생성할 수 있는지 확인
+            // Check if we can create a new folder at the current location
             if (!Directory.Exists(targetPath))
             {
                 MessageBox.Show(StringResources.GetString("CannotCreateFolder"),
@@ -1283,17 +1283,17 @@ namespace TotalCommander.GUI
                 return;
             }
             
-            // 새 폴더 이름 입력 대화 상자 생성
-            using (InputDialog inputDialog = new InputDialog())
+            // Create new folder dialog
+            using (FormNewFolder folderDialog = new FormNewFolder())
             {
-                inputDialog.Text = StringResources.GetString("NewFolder");
-                inputDialog.PromptText = StringResources.GetString("EnterFolderName");
-                inputDialog.Value = GetDefaultDirectoryName(targetPath);
+                folderDialog.Text = StringResources.GetString("NewFolder");
+                folderDialog.NewName = GetDefaultDirectoryName(targetPath);
+                folderDialog.Init();
                 
-                // 대화 상자 표시
-                if (ShowDialogCentered(inputDialog) == DialogResult.OK)
+                // Show dialog
+                if (ShowDialogCentered(folderDialog) == DialogResult.OK)
                 {
-                    string newName = inputDialog.Value;
+                    string newName = folderDialog.NewName;
                     if (string.IsNullOrWhiteSpace(newName))
                     {
                         MessageBox.Show(StringResources.GetString("InvalidFolderName"),
@@ -1354,7 +1354,7 @@ namespace TotalCommander.GUI
             
             string targetPath = CurrentPath;
             
-            // 현재 위치에 새 파일을 생성할 수 있는지 확인
+            // Check if we can create a new file at the current location
             if (!Directory.Exists(targetPath))
             {
                 MessageBox.Show(StringResources.GetString("CannotCreateFile"),
@@ -1362,17 +1362,17 @@ namespace TotalCommander.GUI
                 return;
             }
             
-            // 새 파일 이름 입력 대화 상자 생성
-            using (InputDialog inputDialog = new InputDialog())
+            // Create new file dialog
+            using (FormNewFolder fileDialog = new FormNewFolder())
             {
-                inputDialog.Text = StringResources.GetString("NewFile");
-                inputDialog.PromptText = StringResources.GetString("EnterFileName");
-                inputDialog.Value = "New Text Document.txt";
+                fileDialog.Text = StringResources.GetString("NewFile");
+                fileDialog.NewName = "New Text Document.txt";
+                fileDialog.Init();
                 
-                // 대화 상자 표시
-                if (ShowDialogCentered(inputDialog) == DialogResult.OK)
+                // Show dialog
+                if (ShowDialogCentered(fileDialog) == DialogResult.OK)
                 {
-                    string newName = inputDialog.Value;
+                    string newName = fileDialog.NewName;
                     if (string.IsNullOrWhiteSpace(newName))
                     {
                         MessageBox.Show(StringResources.GetString("InvalidFileName"),
@@ -1534,7 +1534,7 @@ namespace TotalCommander.GUI
                     }
                     
                     // 실행 가능한 파일인 경우
-                    Process.Start(path);
+                Process.Start(path);
                     return;
                 }
                 
@@ -1605,25 +1605,25 @@ namespace TotalCommander.GUI
             try
             {
                 // Initialize cache and data
-                m_ListItemCache = null;
+            m_ListItemCache = null;
                 m_FirstItem = 0;
-                m_ShellItemInfo.Clear();
+            m_ShellItemInfo.Clear();
                 
                 // Set virtual list size to 0 to remove all previous items
                 browser.VirtualListSize = 0;
                 
                 // Add subdirectories and files
-                var subFiles = GetSubFiles(currentDir);
-                if (subDirs.Length > 0)
-                    m_ShellItemInfo.AddRange(subDirs);
+            var subFiles = GetSubFiles(currentDir);
+            if (subDirs.Length > 0)
+                m_ShellItemInfo.AddRange(subDirs);
                 if (subFiles != null && subFiles.Length > 0)
-                    m_ShellItemInfo.AddRange(subFiles);
+                m_ShellItemInfo.AddRange(subFiles);
                 
                 // Reset scroll position
                 browser.TopItem = null;
                 
                 // Set new virtual list size
-                browser.VirtualListSize = m_ShellItemInfo.Count;
+            browser.VirtualListSize = m_ShellItemInfo.Count;
                 
                 // Select first item (before resuming screen updates)
                 if (browser.VirtualListSize > 0)
@@ -2253,47 +2253,16 @@ namespace TotalCommander.GUI
                     string oldName = Path.GetFileName(fileInfo.FullName);
                     string newName = null;
                     
-                    // Use simple InputBox style dialog
-                    using (Form inputDialog = new Form())
+                    // Use FormNewFolder dialog for renaming
+                    using (FormNewFolder renameDialog = new FormNewFolder())
                     {
-                        inputDialog.Text = StringResources.GetString("RenameTitle");
-                        inputDialog.ClientSize = new Size(300, 80);
-                        inputDialog.FormBorderStyle = FormBorderStyle.FixedDialog;
-                        inputDialog.StartPosition = FormStartPosition.CenterParent;
-                        inputDialog.MinimizeBox = false;
-                        inputDialog.MaximizeBox = false;
+                        renameDialog.Text = StringResources.GetString("RenameTitle");
+                        renameDialog.NewName = oldName;
+                        renameDialog.Init();
                         
-                        Label label = new Label();
-                        label.Text = StringResources.GetString("FolderName");
-                        label.Location = new Point(10, 10);
-                        label.AutoSize = true;
-                        inputDialog.Controls.Add(label);
-                        
-                        TextBox textBox = new TextBox();
-                        textBox.Location = new Point(10, 30);
-                        textBox.Size = new Size(280, 23);
-                        textBox.Text = oldName;
-                        textBox.SelectAll();
-                        inputDialog.Controls.Add(textBox);
-                        
-                        Button buttonOk = new Button();
-                        buttonOk.Text = StringResources.GetString("OK");
-                        buttonOk.DialogResult = DialogResult.OK;
-                        buttonOk.Location = new Point(110, 55);
-                        inputDialog.Controls.Add(buttonOk);
-                        
-                        Button buttonCancel = new Button();
-                        buttonCancel.Text = StringResources.GetString("Cancel");
-                        buttonCancel.DialogResult = DialogResult.Cancel;
-                        buttonCancel.Location = new Point(210, 55);
-                        inputDialog.Controls.Add(buttonCancel);
-                        
-                        inputDialog.AcceptButton = buttonOk;
-                        inputDialog.CancelButton = buttonCancel;
-                        
-                        if (FormHelper.ShowDialogCentered(inputDialog, this.FindForm()) == DialogResult.OK)
+                        if (FormHelper.ShowDialogCentered(renameDialog, this.FindForm()) == DialogResult.OK)
                         {
-                            newName = textBox.Text;
+                            newName = renameDialog.NewName;
                         }
                     }
                     

@@ -44,22 +44,22 @@ namespace TotalCommander.GUI
             // lblTitle
             // 
             this.lblTitle.AutoSize = true;
-            this.lblTitle.Font = new System.Drawing.Font("Malgun Gothic", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.lblTitle.Font = new System.Drawing.Font("¸¼Àº °íµñ", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.lblTitle.Location = new System.Drawing.Point(12, 9);
             this.lblTitle.Name = "lblTitle";
-            this.lblTitle.Size = new System.Drawing.Size(155, 21);
+            this.lblTitle.Size = new System.Drawing.Size(102, 21);
             this.lblTitle.TabIndex = 0;
-            this.lblTitle.Text = StringResources.GetString("KeySettingsTitle");
+            this.lblTitle.Text = "±â´É Å° ¼³Á¤";
             // 
             // btnSave
             // 
             this.btnSave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnSave.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.btnSave.Location = new System.Drawing.Point(317, 320);
+            this.btnSave.Location = new System.Drawing.Point(310, 308);
             this.btnSave.Name = "btnSave";
-            this.btnSave.Size = new System.Drawing.Size(75, 23);
+            this.btnSave.Size = new System.Drawing.Size(80, 25);
             this.btnSave.TabIndex = 2;
-            this.btnSave.Text = StringResources.GetString("Save");
+            this.btnSave.Text = "&Save";
             this.btnSave.UseVisualStyleBackColor = true;
             this.btnSave.Click += new System.EventHandler(this.btnSave_Click);
             // 
@@ -67,21 +67,21 @@ namespace TotalCommander.GUI
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.btnCancel.Location = new System.Drawing.Point(398, 320);
+            this.btnCancel.Location = new System.Drawing.Point(396, 308);
             this.btnCancel.Name = "btnCancel";
-            this.btnCancel.Size = new System.Drawing.Size(75, 23);
+            this.btnCancel.Size = new System.Drawing.Size(80, 25);
             this.btnCancel.TabIndex = 3;
-            this.btnCancel.Text = StringResources.GetString("Cancel");
+            this.btnCancel.Text = "Cancel";
             this.btnCancel.UseVisualStyleBackColor = true;
             // 
             // btnDefault
             // 
             this.btnDefault.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnDefault.Location = new System.Drawing.Point(12, 320);
+            this.btnDefault.Location = new System.Drawing.Point(10, 308);
             this.btnDefault.Name = "btnDefault";
-            this.btnDefault.Size = new System.Drawing.Size(87, 23);
+            this.btnDefault.Size = new System.Drawing.Size(80, 25);
             this.btnDefault.TabIndex = 4;
-            this.btnDefault.Text = "Reset to Default";
+            this.btnDefault.Text = "&Default";
             this.btnDefault.UseVisualStyleBackColor = true;
             this.btnDefault.Click += new System.EventHandler(this.btnDefault_Click);
             // 
@@ -105,17 +105,17 @@ namespace TotalCommander.GUI
             this.tblKeySettings.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tblKeySettings.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
             this.tblKeySettings.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
-            this.tblKeySettings.Size = new System.Drawing.Size(461, 260);
+            this.tblKeySettings.Size = new System.Drawing.Size(461, 241);
             this.tblKeySettings.TabIndex = 5;
             // 
             // btnManageUserOptions
             // 
             this.btnManageUserOptions.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnManageUserOptions.Location = new System.Drawing.Point(105, 320);
+            this.btnManageUserOptions.Location = new System.Drawing.Point(96, 308);
             this.btnManageUserOptions.Name = "btnManageUserOptions";
-            this.btnManageUserOptions.Size = new System.Drawing.Size(133, 23);
+            this.btnManageUserOptions.Size = new System.Drawing.Size(80, 25);
             this.btnManageUserOptions.TabIndex = 6;
-            this.btnManageUserOptions.Text = "Manage User Options...";
+            this.btnManageUserOptions.Text = "&Manage";
             this.btnManageUserOptions.UseVisualStyleBackColor = true;
             this.btnManageUserOptions.Click += new System.EventHandler(this.btnManageUserOptions_Click);
             // 
@@ -125,7 +125,7 @@ namespace TotalCommander.GUI
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(485, 361);
+            this.ClientSize = new System.Drawing.Size(485, 342);
             this.Controls.Add(this.btnManageUserOptions);
             this.Controls.Add(this.tblKeySettings);
             this.Controls.Add(this.btnDefault);
@@ -137,10 +137,11 @@ namespace TotalCommander.GUI
             this.MinimizeBox = false;
             this.Name = "FormKeySettings";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = StringResources.GetString("KeySettingsTitle");
+            this.Text = "Function Key Settings";
             this.Load += new System.EventHandler(this.FormKeySettings_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
+
         }
 
         private System.Windows.Forms.Label lblTitle;
