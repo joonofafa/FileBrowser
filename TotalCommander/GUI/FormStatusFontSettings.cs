@@ -10,6 +10,7 @@ namespace TotalCommander.GUI
     {
         public Font SelectedFont { get; private set; }
         private Font m_InitialFont;
+        public bool ApplyToStatusBar { get { return true; } }
 
         public FormStatusFontSettings(Font currentFont)
         {

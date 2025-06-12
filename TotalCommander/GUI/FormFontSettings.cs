@@ -10,7 +10,9 @@ namespace TotalCommander.GUI
     {
         public Font SelectedFont { get; private set; }
         private Font m_InitialFont;
-        public bool ApplyToStatusBar { get; private set; } = true;
+        public bool ApplyToStatusBar { get; set; } = true;
+
+        private CheckBox checkBoxApplyToStatusBar;
 
         public FormFontSettings(Font currentFont)
         {
@@ -170,7 +172,5 @@ namespace TotalCommander.GUI
         {
             this.DialogResult = DialogResult.Cancel;
         }
-        
-        private CheckBox checkBoxApplyToStatusBar;
     }
 } 

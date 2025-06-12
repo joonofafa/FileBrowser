@@ -37,7 +37,7 @@ namespace TotalCommander
         public Form_TotalCommander()
         {
             InitializeComponent();
-            
+
             // Show build date in title bar
             UpdateTitleWithBuildDateTime();
             
@@ -545,13 +545,11 @@ namespace TotalCommander
         
         private void ShowSettingsDialog()
         {
-            // Show the settings dialog
-            using (var settingsForm = new GUI.FormSettings(this))
+            using (var settingsForm = new GUI.FormSettingsNew(this))
             {
-                if (ShowDialogCentered(settingsForm) == DialogResult.OK)
+                if (settingsForm.ShowDialog() == DialogResult.OK)
                 {
-                    // Settings were saved by the form itself
-                    Logger.Debug("Settings applied");
+                    // Settings already saved in form
                 }
             }
         }
@@ -575,7 +573,23 @@ namespace TotalCommander
             {
                 if (fontSettings.ShowDialog(this) == DialogResult.OK)
                 {
-                    SaveFontSettings(fontSettings.SelectedFont, fontSettings.ApplyToStatusBar);
+                    // ApplyToStatusBar 속성 접근 전 리플렉션으로 존재 여부 확인
+                    bool applyToStatusBar = true;
+                    try
+                    {
+                        var prop = fontSettings.GetType().GetProperty("ApplyToStatusBar");
+                        if (prop != null)
+                        {
+                            applyToStatusBar = (bool)prop.GetValue(fontSettings);
+                        }
+                    }
+                    catch
+                    {
+                        // 예외 발생 시 기본값 사용
+                        applyToStatusBar = true;
+                    }
+
+                    SaveFontSettings(fontSettings.SelectedFont, applyToStatusBar);
                 }
             }
         }
@@ -594,9 +608,36 @@ namespace TotalCommander
 
         public void ApplySortMode(int sortMode)
         {
-            // Apply sort mode to both shell browsers
             shellBrowser_Left.ApplySortMode(sortMode);
             shellBrowser_Right.ApplySortMode(sortMode);
+        }
+
+        /// <summary>
+        /// 설정이 변경되었을 때 호출되는 메서드
+        /// </summary>
+        public void SettingsChanged()
+        {
+            // 설정 변경 시 필요한 작업 수행
+            // 정렬 모드 적용
+            ApplySortMode(Properties.Settings.Default.DefaultSortMode);
+            
+            // 보기 설정 적용
+            bool showHidden = Properties.Settings.Default.ShowHiddenFiles;
+            bool showSystem = Properties.Settings.Default.ShowSystemFiles;
+            shellBrowser_Left.SetShowHiddenSystemFiles(showHidden, showSystem);
+            shellBrowser_Right.SetShowHiddenSystemFiles(showHidden, showSystem);
+            
+            // 전체 행 선택 설정
+            bool fullRowSelect = Properties.Settings.Default.FullRowSelect;
+            shellBrowser_Left.SetFullRowSelect(fullRowSelect);
+            shellBrowser_Right.SetFullRowSelect(fullRowSelect);
+            
+            // 기타 설정 적용
+            LoadFontSettings();
+            
+            // 브라우저 새로고침
+            shellBrowser_Left.RefreshView();
+            shellBrowser_Right.RefreshView();
         }
 
         // Method to save font settings
@@ -785,91 +826,73 @@ namespace TotalCommander
         {
             try
             {
-                string appDataFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                string tcFolder = Path.Combine(appDataFolder, "TotalCommander");
-                string fontSettingsPath = Path.Combine(tcFolder, "FontSettings.xml");
-
-                if (File.Exists(fontSettingsPath))
-                {
-                    string fontFamilyName = "Microsoft Sans Serif";
-                    float fontSize = 9;
-                    bool isBold = false;
-                    bool isItalic = false;
-                    bool isUnderline = false;
-                    bool isStrikeout = false;
-                    bool applyToStatusBar = true;
-
-                    // Read font settings from XML file
-                    XmlDocument doc = new XmlDocument();
-                    doc.Load(fontSettingsPath);
-
-                    XmlNode fontFamilyNode = doc.SelectSingleNode("//FontFamily");
-                    if (fontFamilyNode != null)
-                        fontFamilyName = fontFamilyNode.InnerText;
-
-                    XmlNode sizeNode = doc.SelectSingleNode("//Size");
-                    if (sizeNode != null)
-                        fontSize = float.Parse(sizeNode.InnerText);
-
-                    XmlNode boldNode = doc.SelectSingleNode("//Bold");
-                    if (boldNode != null)
-                        isBold = bool.Parse(boldNode.InnerText);
-
-                    XmlNode italicNode = doc.SelectSingleNode("//Italic");
-                    if (italicNode != null)
-                        isItalic = bool.Parse(italicNode.InnerText);
-
-                    XmlNode underlineNode = doc.SelectSingleNode("//Underline");
-                    if (underlineNode != null)
-                        isUnderline = bool.Parse(underlineNode.InnerText);
-
-                    XmlNode strikeoutNode = doc.SelectSingleNode("//Strikeout");
-                    if (strikeoutNode != null)
-                        isStrikeout = bool.Parse(strikeoutNode.InnerText);
-                        
-                    XmlNode applyToStatusBarNode = doc.SelectSingleNode("//ApplyToStatusBar");
-                    if (applyToStatusBarNode != null)
-                        applyToStatusBar = bool.Parse(applyToStatusBarNode.InnerText);
-
-                    // Set font style
-                    FontStyle style = FontStyle.Regular;
-                    if (isBold) style |= FontStyle.Bold;
-                    if (isItalic) style |= FontStyle.Italic;
-                    if (isUnderline) style |= FontStyle.Underline;
-                    if (isStrikeout) style |= FontStyle.Strikeout;
-
-                    // Create and apply font
-                    try
-                    {
-                        currentAppliedFont = new Font(fontFamilyName, fontSize, style);
-                        shellBrowser_Left.ApplyFont(currentAppliedFont);
-                        shellBrowser_Right.ApplyFont(currentAppliedFont);
-                        
-                        // Set status bar font
-                        if (applyToStatusBar)
-                        {
-                            shellBrowser_Left.ApplyStatusBarFont(currentAppliedFont);
-                            shellBrowser_Right.ApplyStatusBarFont(currentAppliedFont);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine("Font application error: " + ex.Message);
-                        // Use default font
-                        currentAppliedFont = SystemFonts.DefaultFont;
-                    }
-                }
-                else
-                {
-                    // If file doesn't exist, use default font
-                    currentAppliedFont = SystemFonts.DefaultFont;
-                }
+                // 폴더창 폰트 로드 및 적용
+                Font folderFont = LoadFontFromSettings("FolderFont", "굴림", 9);
+                shellBrowser_Left.ApplyFont(folderFont);
+                shellBrowser_Right.ApplyFont(folderFont);
+                
+                // 파일뷰어창 폰트 로드 및 적용
+                Font viewerFont = LoadFontFromSettings("ViewerFont", "굴림체", 10);
+                // TODO: 파일뷰어창이 구현되어 있다면 여기서 적용
+                
+                // 상태표시줄 폰트 로드 및 적용
+                Font statusFont = LoadFontFromSettings("StatusFont", "굴림", 9);
+                shellBrowser_Left.ApplyStatusBarFont(statusFont);
+                shellBrowser_Right.ApplyStatusBarFont(statusFont);
+                
+                // 주소표시줄 폰트 로드 및 적용
+                Font addressBarFont = LoadFontFromSettings("AddressBarFont", "굴림", 9);
+                shellBrowser_Left.ApplyAddressBarFont(addressBarFont);
+                shellBrowser_Right.ApplyAddressBarFont(addressBarFont);
+                
+                // 현재 적용된 폰트 저장 (호환성 유지)
+                currentAppliedFont = folderFont;
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine("Font settings load error: " + ex.Message);
-                // Use default font if error occurs
+                // 오류 발생 시 기본 폰트 사용
                 currentAppliedFont = SystemFonts.DefaultFont;
+            }
+        }
+        
+        /// <summary>
+        /// 설정에서 폰트 로드
+        /// </summary>
+        private Font LoadFontFromSettings(string settingName, string defaultFontName, float defaultSize)
+        {
+            try
+            {
+                string fontString = "";
+                
+                switch (settingName)
+                {
+                    case "FolderFont":
+                        fontString = Properties.Settings.Default.FolderFont;
+                        break;
+                    case "ViewerFont":
+                        fontString = Properties.Settings.Default.ViewerFont;
+                        break;
+                    case "StatusFont":
+                        fontString = Properties.Settings.Default.StatusFont;
+                        break;
+                    case "AddressBarFont":
+                        fontString = Properties.Settings.Default.AddressBarFont;
+                        break;
+                    case "ExplorerFont": // 이전 버전과의 호환성
+                        fontString = Properties.Settings.Default.ExplorerFont;
+                        break;
+                }
+                
+                if (!string.IsNullOrEmpty(fontString))
+                    return GUI.Settings.FontConverter.FromString(fontString);
+                else
+                    return new Font(defaultFontName, defaultSize);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Font load error ({settingName}): {ex.Message}");
+                return new Font(defaultFontName, defaultSize);
             }
         }
 

@@ -352,70 +352,14 @@ namespace TotalCommander
                 if (!Directory.Exists(directory))
                     Directory.CreateDirectory(directory);
 
-                // Debugging message - check F5 key setting before saving
-                string f5Debug = "";
-                foreach (var setting in Settings)
-                {
-                    if (setting.Key == Keys.F5)
-                    {
-                        f5Debug = $"Saving F5 key setting: Action={setting.Action}";
-                        if (setting.Action == KeyAction.UserExecute)
-                            f5Debug += $", Option={setting.UserExecuteOptionName}";
-                        // MessageBox replaced with log
-                        Logger.Information(f5Debug);
-                        break;
-                    }
-                }
-
                 XmlSerializer serializer = new XmlSerializer(typeof(KeySettings));
                 using (StreamWriter writer = new StreamWriter(SettingsFilePath))
                 {
                     serializer.Serialize(writer, this);
                 }
-
-                // Immediately read file after saving to verify
-                if (File.Exists(SettingsFilePath))
-                {
-                    KeySettings verifySettings = null;
-                    try
-                    {
-                        XmlSerializer readSerializer = new XmlSerializer(typeof(KeySettings));
-                        using (StreamReader reader = new StreamReader(SettingsFilePath))
-                        {
-                            verifySettings = (KeySettings)readSerializer.Deserialize(reader);
-                        }
-
-                        if (verifySettings != null)
-                        {
-                            foreach (var setting in verifySettings.Settings)
-                            {
-                                if (setting.Key == Keys.F5)
-                                {
-                                    string verifyMsg = $"Saved F5 key setting verification: Action={setting.Action}";
-                                    if (setting.Action == KeyAction.UserExecute)
-                                        verifyMsg += $", Option={setting.UserExecuteOptionName}";
-                                    // MessageBox replaced with log
-                                    Logger.Information(verifyMsg);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        // Log and show message box
-                        Logger.Error(ex, "Saved settings file verification failed");
-                        MessageBox.Show(
-                            StringResources.GetString("SavedSettingsVerificationError", ex.Message),
-                            StringResources.GetString("SettingsVerificationError"), 
-                            MessageBoxButtons.OK, 
-                            MessageBoxIcon.Error);
-                    }
-                }
             }
             catch (Exception ex)
             {
-                // Log and show message box
                 Logger.Error(ex, "Error saving settings");
                 MessageBox.Show(
                     StringResources.GetString("ErrorSavingSettings", ex.Message),
@@ -430,102 +374,115 @@ namespace TotalCommander
         /// </summary>
         public static KeySettings Load()
         {
-            // Settings file path
             string settingsPath = SettingsFilePath;
-            
-            // Debugging - check settings file path (MessageBox replaced with log)
-            Logger.Information($"Settings file path: {settingsPath}");
-            Logger.Information($"File existence: {File.Exists(settingsPath)}");
             
             if (!File.Exists(settingsPath))
             {
                 KeySettings newSettings = new KeySettings();
-                // Important: Do not set defaults here - remove SetDefaults() call from constructor
-                // newSettings.SetDefaults(); 
-                newSettings.Save(); // Save empty settings if file doesn't exist
+                newSettings.SetDefaults();
+                newSettings.Save();
                 return newSettings;
             }
 
             try
             {
-                KeySettings loadedSettings = null;
-                XmlSerializer serializer = new XmlSerializer(typeof(KeySettings));
-                using (StreamReader reader = new StreamReader(settingsPath))
+                using (var reader = new StreamReader(settingsPath))
                 {
-                    loadedSettings = (KeySettings)serializer.Deserialize(reader);
-                }
-
-                // Debugging message - check loaded F5 key setting
-                if (loadedSettings != null)
-                {
-                    // Important: Do not initialize empty settings list to defaults
-                    if (loadedSettings.Settings == null)
-                        loadedSettings.Settings = new List<KeySetting>();
-                        
-                    if (loadedSettings.UserExecuteOptions == null)
-                        loadedSettings.UserExecuteOptions = new List<UserExecuteOption>();
-                        
-                    // F5 key setting verification
-                    bool hasF5Setting = false;
-                    foreach (var setting in loadedSettings.Settings)
-                    {
-                        if (setting.Key == Keys.F5)
-                        {
-                            hasF5Setting = true;
-                            string loadMsg = $"Loaded F5 key setting: Action={setting.Action}";
-                            if (setting.Action == KeyAction.UserExecute)
-                                loadMsg += $", Option={setting.UserExecuteOptionName}";
-                            // MessageBox replaced with log
-                            Logger.Information(loadMsg);
-                            break;
-                        }
-                    }
-                    
-                    // Warning if no F5 setting
-                    if (!hasF5Setting)
-                    {
-                        // MessageBox replaced with log
-                        Logger.Warning("Loaded settings have no F5 key setting!");
-                    }
-                    
-                    return loadedSettings;
-                }
-                else
-                {
-                    // Log and show message box
-                    Logger.Error("Loaded settings but null returned");
-                    MessageBox.Show(
-                        StringResources.GetString("NullSettingsReturned"),
-                        StringResources.GetString("SettingsLoadError"), 
-                        MessageBoxButtons.OK, 
-                        MessageBoxIcon.Error);
-                    return new KeySettings();
+                    var serializer = new XmlSerializer(typeof(KeySettings));
+                    var settings = (KeySettings)serializer.Deserialize(reader);
+                    if (settings.Settings == null) settings.Settings = new List<KeySetting>();
+                    if (settings.UserExecuteOptions == null) settings.UserExecuteOptions = new List<UserExecuteOption>();
+                    return settings;
                 }
             }
             catch (Exception ex)
             {
-                // Log and show message box
-                Logger.Error(ex, "Error loading settings");
-                MessageBox.Show(
-                    StringResources.GetString("ErrorLoadingSettings", ex.Message),
-                    StringResources.GetString("SettingsLoadError"), 
-                    MessageBoxButtons.OK, 
-                    MessageBoxIcon.Error);
-                
-                // Error occurs, backup settings file and create new settings
+                Logger.Error(ex, "Error loading settings, creating backup and new settings.");
                 try
                 {
-                    string backupPath = settingsPath + ".bak";
-                    if (File.Exists(settingsPath))
-                    {
-                        File.Copy(settingsPath, backupPath, true);
-                        File.Delete(settingsPath);
-                    }
+                    File.Copy(settingsPath, settingsPath + ".bak", true);
                 }
-                catch { /* Backup failure ignored */ }
-
-                return new KeySettings(); // Return default settings on error
+                catch (Exception backupEx)
+                {
+                    Logger.Error(backupEx, "Failed to create backup of settings file.");
+                }
+                var newSettings = new KeySettings();
+                newSettings.SetDefaults();
+                newSettings.Save();
+                return newSettings;
             }
+        }
+
+        /// <summary>
+        /// 모든 키 목록 가져오기
+        /// </summary>
+        public List<Keys> GetAllKeys()
+        {
+            var keys = new HashSet<Keys>();
+            for (Keys k = Keys.F1; k <= Keys.F12; k++)
+            {
+                keys.Add(k);
+            }
+            foreach (var setting in Settings)
+            {
+                keys.Add(setting.Key);
+            }
+            var keyList = new List<Keys>(keys);
+            keyList.Sort();
+            return keyList;
+        }
+
+        /// <summary>
+        /// 특정 키에 대한 액션 설정
+        /// </summary>
+        public void SetActionForKey(Keys key, KeyAction action)
+        {
+            var setting = Settings.Find(s => s.Key == key);
+            if (setting != null)
+            {
+                setting.Action = action;
+                if (action != KeyAction.UserExecute)
+                {
+                    setting.UserExecuteOptionName = string.Empty;
+                }
+            }
+            else
+            {
+                Settings.Add(new KeySetting(key, action));
+            }
+        }
+
+        /// <summary>
+        /// 특정 키에 대한 사용자 정의 명령 옵션 설정
+        /// </summary>
+        public void SetUserExecuteOptionForKey(Keys key, string optionName)
+        {
+            var setting = Settings.Find(s => s.Key == key);
+            if (setting != null)
+            {
+                setting.Action = KeyAction.UserExecute;
+                setting.UserExecuteOptionName = optionName;
+            }
+            else
+            {
+                Settings.Add(new KeySetting(key, KeyAction.UserExecute, optionName));
+            }
+        }
+
+        /// <summary>
+        /// 특정 키의 설정 초기화
+        /// </summary>
+        public void ResetKey(Keys key)
+        {
+            Settings.RemoveAll(s => s.Key == key);
+        }
+
+        /// <summary>
+        /// 사용자 정의 명령 옵션 목록 가져오기
+        /// </summary>
+        public List<UserExecuteOption> GetUserExecuteOptions()
+        {
+            return UserExecuteOptions;
         }
     }
 } 

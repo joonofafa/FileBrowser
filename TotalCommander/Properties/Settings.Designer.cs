@@ -96,6 +96,210 @@ namespace TotalCommander.Properties {
                 this["DefaultSortMode"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool ShowHiddenFiles {
+            get {
+                return ((bool)(this["ShowHiddenFiles"]));
+            }
+            set {
+                this["ShowHiddenFiles"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool ShowSystemFiles {
+            get {
+                return ((bool)(this["ShowSystemFiles"]));
+            }
+            set {
+                this["ShowSystemFiles"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool FullRowSelect {
+            get {
+                return ((bool)(this["FullRowSelect"]));
+            }
+            set {
+                this["FullRowSelect"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ConfirmOverwrite {
+            get {
+                return ((bool)(this["ConfirmOverwrite"]));
+            }
+            set {
+                this["ConfirmOverwrite"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool PreserveFileTime {
+            get {
+                return ((bool)(this["PreserveFileTime"]));
+            }
+            set {
+                this["PreserveFileTime"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2")]
+        public int DefaultCompressionLevel {
+            get {
+                return ((int)(this["DefaultCompressionLevel"]));
+            }
+            set {
+                this["DefaultCompressionLevel"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int DefaultCompressionFormat {
+            get {
+                return ((int)(this["DefaultCompressionFormat"]));
+            }
+            set {
+                this["DefaultCompressionFormat"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ExplorerFont {
+            get {
+                return ((string)(this["ExplorerFont"]));
+            }
+            set {
+                this["ExplorerFont"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string StatusFont {
+            get {
+                return ((string)(this["StatusFont"]));
+            }
+            set {
+                this["StatusFont"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Name")]
+        public string SortMode {
+            get {
+                return ((string)(this["SortMode"]));
+            }
+            set {
+                this["SortMode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool SortReverse {
+            get {
+                return ((bool)(this["SortReverse"]));
+            }
+            set {
+                this["SortReverse"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool DirsFirst {
+            get {
+                return ((bool)(this["DirsFirst"]));
+            }
+            set {
+                this["DirsFirst"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int WindowX {
+            get {
+                return ((int)(this["WindowX"]));
+            }
+            set {
+                this["WindowX"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int WindowY {
+            get {
+                return ((int)(this["WindowY"]));
+            }
+            set {
+                this["WindowY"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string FolderFont {
+            get {
+                return ((string)(this["FolderFont"]));
+            }
+            set {
+                this["FolderFont"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ViewerFont {
+            get {
+                return ((string)(this["ViewerFont"]));
+            }
+            set {
+                this["ViewerFont"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string AddressBarFont {
+            get {
+                return ((string)(this["AddressBarFont"]));
+            }
+            set {
+                this["AddressBarFont"] = value;
+            }
+        }
     }
 }
 

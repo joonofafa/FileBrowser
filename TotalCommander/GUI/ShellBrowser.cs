@@ -734,6 +734,8 @@ namespace TotalCommander.GUI
                     GoParent();
                     break;
                 case Keys.Back:
+                    GoParent();
+                    break;
                 case Keys.Alt | Keys.Left:
                     GoBackward();
                     break;
@@ -1599,6 +1601,12 @@ namespace TotalCommander.GUI
             // Update address bar
             txtPath.Text = CurrentPath;
             
+            // 경로 이동이 성공하면 히스토리에 추가
+            if (updateHistory)
+            {
+                m_History.Add(path);
+            }
+            
             // Pause screen updates
             browser.BeginUpdate();
             
@@ -1965,6 +1973,18 @@ namespace TotalCommander.GUI
             
             // Adjust status bar height to match font size
             AdjustStatusBarHeight(statusFont);
+        }
+        
+        /// <summary>
+        /// Sets the font for the address bar (path text box).
+        /// </summary>
+        /// <param name="font">Font to apply</param>
+        public void ApplyAddressBarFont(Font font)
+        {
+            if (font == null || txtPath == null) return;
+            
+            // Change the address bar font
+            txtPath.Font = new Font(font.FontFamily, font.Size, font.Style);
         }
         
         /// <summary>
@@ -2357,43 +2377,59 @@ namespace TotalCommander.GUI
         /// <param name="sortMode">Sort mode (0: Name, 1: Size, 2: Date, 3: Extension)</param>
         public void ApplySortMode(int sortMode)
         {
-            // Set the sort column and order based on the sort mode
+            // Sort files and folders based on the specified sort mode
             switch (sortMode)
             {
                 case 0: // Name
                     SortColumn = 0;
-                    Order = SortOrder.Ascending;
                     break;
                 case 1: // Size
                     SortColumn = 1;
-                    Order = SortOrder.Descending;
                     break;
                 case 2: // Date
                     SortColumn = 2;
-                    Order = SortOrder.Descending;
                     break;
                 case 3: // Extension
                     SortColumn = 3;
-                    Order = SortOrder.Ascending;
                     break;
                 default:
                     SortColumn = 0;
-                    Order = SortOrder.Ascending;
                     break;
             }
             
-            // Apply the sort if browser is already initialized
-            if (browser != null && browser.Items.Count > 0)
-            {
-                // Refresh list view with the new sort settings
-                RefreshListView();
-                Logger.Debug($"Sort mode applied: {sortMode}");
-            }
+            // Apply sorting
+            Order = SortOrder.Ascending;
+            RefreshListView();
+        }
+        
+        /// <summary>
+        /// 숨김 파일 및 시스템 파일 표시 설정 적용
+        /// </summary>
+        /// <param name="showHidden">숨김 파일 표시 여부</param>
+        /// <param name="showSystem">시스템 파일 표시 여부</param>
+        public void SetShowHiddenSystemFiles(bool showHidden, bool showSystem)
+        {
+            // 설정 적용 후 브라우저 새로고침
+            RefreshListView();
         }
 
         /// <summary>
-        /// Check if the file has an archive extension
+        /// 전체 행 선택 설정 적용
         /// </summary>
+        /// <param name="fullRowSelect">전체 행 선택 여부</param>
+        public void SetFullRowSelect(bool fullRowSelect)
+        {
+            browser.FullRowSelect = fullRowSelect;
+        }
+
+        /// <summary>
+        /// 브라우저 새로고침
+        /// </summary>
+        public void RefreshView()
+        {
+            RefreshListView();
+        }
+
         private bool IsArchiveFile(string filePath)
         {
             if (string.IsNullOrEmpty(filePath))

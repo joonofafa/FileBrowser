@@ -160,7 +160,47 @@
     <Compile Include="GUI\FormUserExecuteOption.cs">
       <SubType>Form</SubType>
     </Compile>
-
+    <Compile Include="GUI\FormSettingsNew.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="GUI\Settings\ISettingsPanel.cs" />
+    <Compile Include="GUI\Settings\FontConverter.cs" />
+    <Compile Include="GUI\Settings\FontPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="GUI\Settings\FontPanel.Designer.cs">
+      <DependentUpon>FontPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\Settings\SettingsPanelBase.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="GUI\Settings\SettingsPanelBase.Designer.cs">
+      <DependentUpon>SettingsPanelBase.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\Settings\SortingPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="GUI\Settings\SortingPanel.Designer.cs">
+      <DependentUpon>SortingPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\Settings\ViewPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="GUI\Settings\ViewPanel.Designer.cs">
+      <DependentUpon>ViewPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\Settings\KeyPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="GUI\Settings\KeyPanel.Designer.cs">
+      <DependentUpon>KeyPanel.cs</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\Settings\UserCommandPanel.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="GUI\Settings\UserCommandPanel.Designer.cs">
+      <DependentUpon>UserCommandPanel.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ShellInfoItem.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
@@ -172,6 +212,7 @@
     <Compile Include="Logger.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="StringResources.cs" />
+    <Compile Include="UserCommandSettings.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Form_TotalCommander.resx">
@@ -196,6 +237,15 @@
     <EmbeddedResource Include="GUI\FormSevenZip.resx">
       <DependentUpon>FormSevenZip.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="GUI\Settings\FontPanel.resx">
+      <DependentUpon>FontPanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\Settings\SortingPanel.resx">
+      <DependentUpon>SortingPanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\Settings\ViewPanel.resx">
+      <DependentUpon>ViewPanel.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="GUI\ShellBrowser.resx">
       <DependentUpon>ShellBrowser.cs</DependentUpon>
     </EmbeddedResource>
@@ -215,6 +265,12 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FormSettings.resx">
+      <DependentUpon>FormSettings.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="GUI\FormSettingsNew.resx">
+      <DependentUpon>FormSettingsNew.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="app.manifest">
       <SubType>Designer</SubType>

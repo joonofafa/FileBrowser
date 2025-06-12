@@ -1,14 +1,9 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using TotalCommander;
 
-namespace TotalCommander
+namespace TotalCommander.GUI.Settings
 {
     /// <summary>
-    /// Represents an item in System.Windows.Forms.ComboBox
+    /// 콤보박스 아이템을 표현하는 클래스
     /// </summary>
     public class ComboBoxItem
     {
@@ -32,5 +27,4 @@ namespace TotalCommander
             return Text;
         }
     }
-}
-
+} 
